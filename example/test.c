@@ -4,8 +4,17 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "parser.h"
+
+static void Error_(struct parser_result *result)
+{
+    printf("Error, parser status: %d\n", result->status);
+    exit(EXIT_FAILURE);
+
+    return;
+}
 
 int main(int argc, char *argv[])
 {
@@ -29,7 +38,7 @@ int main(int argc, char *argv[])
         },
     };
 
-    struct parser_result *res = ArgParser(argc, 0, argv, parser, sizeof(parser) / sizeof(struct parser), NULL);
+    struct parser_result *res = ArgParser(argc, 0, argv, parser, sizeof(parser) / sizeof(struct parser), Error_);
 
     printf("test_str: %s, %s\n", test_str1, test_str2);
     for (int i = 0; i < res->params_count; i++) {

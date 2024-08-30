@@ -12,51 +12,50 @@ struct ArgParserData_ {
     // the result structure of the main function
     struct parser_result *res;
     // error callback function pointer, NULL is exit(EXIT_FAILURE)
-    void (*ErrorCallback)(void);
+    void (*ErrorCallback)(struct parser_result *);
     int argc;
     char **argv;
     // the arg index being processed, it records the first unprocessed arg
     int arg_ind;
-    struct parser *configs;
-    // TODO custom parameter quantity
     int config_count;
+    struct parser *configs;
 };
 
-static void ShiftArgIndex_(struct ArgParserData_ *data)
+static void CallError_(struct ArgParserData_ *data)
 {
-    data->arg_ind++;
-    if (not(data->arg_ind < data->argc)) {
-        data->res->status = kArgParserShiftingArg;
+    data->res->status = kArgParserShiftingArg;
 
-        if (data->ErrorCallback == NULL)
-            exit(EXIT_FAILURE);
-        data->ErrorCallback();
-    }
-
-    return;
+    if (data->ErrorCallback == NULL)
+        exit(EXIT_FAILURE);
+    else
+        data->ErrorCallback(data->res);
 }
 
-static void GetFlagArguments_(struct ArgParserData_ *data, int flag_ind)
+static void GetFlagArguments_(struct ArgParserData_ *data, int flag_ind /* flag index */)
 {
-    for (int i = 0; i < data->configs[flag_ind].var_count; i++) {
+    for (int i = 0; i < data->configs[flag_ind].var_count; /* increment at below */) {
         switch (data->configs[flag_ind].var_types[i]) {
         case kTypeString:
             *(char **)data->configs[flag_ind].var_ptrs[i] = data->argv[data->arg_ind];
             break;
         }
-        ShiftArgIndex_(data);
-    }
 
-    return;
+        data->arg_ind++;
+        i++;
+        // if args has reached the end, but this flag still need more parameter, call the error
+        if (not(data->arg_ind < data->argc) and i < data->configs[flag_ind].var_count)
+            CallError_(data);
+    }
 }
 
 /*
-    If ErrorCallback is NULL then use exit(EXIT_FAILURE)
+    If ErrorCallback is NULL then use exit(EXIT_FAILURE),
+    if is a function then need accept a result structure, this should help
 
     TODO I don't like this parameter style
  */
-struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *options, int opt_num,
-                                void (*ErrorCallback)(void))
+struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *opts, int opt_count,
+                                void (*ErrorCallback)(struct parser_result *))
 {
     struct ArgParserData_ data = {
         .res = malloc(sizeof(struct parser_result)), // res -> result
@@ -64,18 +63,19 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct par
         .argc = argc,
         .argv = argv,
         .arg_ind = last_arg,
-        .configs = options,
-        .config_count = opt_num,
+        .configs = opts,
+        .config_count = opt_count,
     };
 
-    for (; data.arg_ind < argc; data.arg_ind++) {
+    for (; data.arg_ind < data.argc; data.arg_ind++) {
         // TODO add "/", "+" prefix
+        // all we need to do is just let the user set the prefix
         if (strncmp(data.argv[data.arg_ind], "--", 2) == 0) {
             // TODO implement "="
             for (int i = 0; i < data.config_count; i++) {
                 if (strcmp(data.configs[i].long_name, data.argv[data.arg_ind] + 2) != 0)
                     continue;
-                ShiftArgIndex_(&data);
+                data.arg_ind++;
                 GetFlagArguments_(&data, i);
             }
             continue;

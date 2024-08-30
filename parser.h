@@ -22,7 +22,7 @@ struct parser {
 };
 
 struct parser_result {
-    enum parser_status status; // TODO no one can get this, if processing error
+    enum parser_status status;
     int parsed_argc_index; // Pointer to the last parsed argument
     int params_count;      // Parameters is non-flag argument
     char **parameters;
@@ -33,4 +33,4 @@ struct parser_result {
 #define ARG_PARSER_VAR_TYPE enum parser_var_type
 
 struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *options, int opt_num,
-                                void (*ErrorCallback)(void));
+                                void (*ErrorCallback)(struct parser_result *));
