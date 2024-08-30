@@ -1,51 +1,98 @@
 #include "parser.h"
 
+#include <iso646.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void GetNextArgumentWithType_(char argument[], void **var_ptr, enum parser_var_type var_type)
+/*
+    An unified data of this unit
+ */
+struct ArgParserData_ {
+    // the result structure of the main function
+    struct parser_result *res;
+    // error callback function pointer, NULL is exit(EXIT_FAILURE)
+    void (*ErrorCallback)(void);
+    int argc;
+    char **argv;
+    // the arg index being processed, it records the first unprocessed arg
+    int arg_ind;
+    struct parser *configs;
+    // TODO custom parameter quantity
+    int config_count;
+};
+
+static void ShiftArgIndex_(struct ArgParserData_ *data)
 {
-    switch (var_type) {
-    case kTypeString:
-        *var_ptr = argument;
-        break;
+    data->arg_ind++;
+    if (not(data->arg_ind < data->argc)) {
+        data->res->status = kArgParserShiftingArg;
+
+        if (data->ErrorCallback == NULL)
+            exit(EXIT_FAILURE);
+        data->ErrorCallback();
     }
 
     return;
 }
 
-struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *options, int opt_num)
+static void GetFlagArguments_(struct ArgParserData_ *data, int flag_ind)
 {
-    struct parser_result *res = malloc(sizeof(struct parser_result)); // res -> result
+    for (int i = 0; i < data->configs[flag_ind].var_count; i++) {
+        switch (data->configs[flag_ind].var_types[i]) {
+        case kTypeString:
+            *(char **)data->configs[flag_ind].var_ptrs[i] = data->argv[data->arg_ind];
+            break;
+        }
+        ShiftArgIndex_(data);
+    }
 
-    for (; last_arg < argc; last_arg++) {
+    return;
+}
+
+/*
+    If ErrorCallback is NULL then use exit(EXIT_FAILURE)
+
+    TODO I don't like this parameter style
+ */
+struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *options, int opt_num,
+                                void (*ErrorCallback)(void))
+{
+    struct ArgParserData_ data = {
+        .res = malloc(sizeof(struct parser_result)), // res -> result
+        .ErrorCallback = ErrorCallback,
+        .argc = argc,
+        .argv = argv,
+        .arg_ind = last_arg,
+        .configs = options,
+        .config_count = opt_num,
+    };
+
+    for (; data.arg_ind < argc; data.arg_ind++) {
         // TODO add "/", "+" prefix
-        if (strncmp(argv[last_arg], "--", 2) == 0) {
-            // TODO code optimization
+        if (strncmp(data.argv[data.arg_ind], "--", 2) == 0) {
             // TODO implement "="
-            for (int i = 0; i < opt_num; i++) {
-                if (strcmp(options[i].long_name, argv[last_arg] + 2) != 0) // TODO make it be configurable
+            for (int i = 0; i < data.config_count; i++) {
+                if (strcmp(data.configs[i].long_name, data.argv[data.arg_ind] + 2) != 0)
                     continue;
-                last_arg++;
-                if (last_arg < argc)
-                    GetNextArgumentWithType_(argv[last_arg], options[i].variable_ptr, options[i].var_type);
+                ShiftArgIndex_(&data);
+                GetFlagArguments_(&data, i);
             }
             continue;
         } else if (strncmp(argv[last_arg], "-", 1) == 0) {
             // TODO same as "--"
             continue;
         } else {
-            res->params_count += 1;
-            size_t this_arg_size = strlen(argv[last_arg]) + 1;
+            data.res->params_count += 1;
+            size_t this_arg_size = strlen(data.argv[data.arg_ind]) + 1;
 
-            res->parameters = realloc(res->parameters, sizeof(char **) * res->params_count);
-            res->parameters[res->params_count - 1] = argv[last_arg];
+            data.res->parameters = realloc(data.res->parameters, sizeof(char **) * data.res->params_count);
+            data.res->parameters[data.res->params_count - 1] = data.argv[data.arg_ind];
         }
     }
-    // last_arg equal with argc, but here need a valid index
-    res->parsed_argc_index = last_arg - 1;
+    // last_arg equal with argc now, but here need a valid index
+    data.res->parsed_argc_index = data.arg_ind - 1;
 
     // TODO find a way to free those malloc()
-    return res;
+    return data.res;
 }
