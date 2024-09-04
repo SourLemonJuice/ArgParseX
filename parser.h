@@ -7,18 +7,30 @@ enum parser_status {
     kArgParserShiftingArg,
 };
 
+// TODO not implemented all
+enum parser_var_method {
+    kMethodBooleanFlag,
+    kMethodSingleVariable,
+    kMethodMultipleVariable,
+};
+
 enum parser_var_type {
     kTypeString,
+    // TODO
+    kTypeInteger,
+    kTypeBoolean,
+    kTypeFloat,
+    kTypeDouble,
 };
 
 // TODO change structure name
 struct parser {
-    uint16_t flag; // TODO
-    char *short_name;
-    char *long_name;
+    enum parser_var_method method;
+    char *name;
+    char *prefix;
     int var_count;
-    void **var_ptrs;
     enum parser_var_type *var_types;
+    void **var_ptrs;
 };
 
 struct parser_result {
@@ -29,7 +41,7 @@ struct parser_result {
 };
 
 // TODO TBD
-// give use a macro but not enum's name?
+// give user a macro but not enum's name?
 #define ARG_PARSER_VAR_TYPE enum parser_var_type
 
 struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *options, int opt_num,

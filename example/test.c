@@ -23,7 +23,9 @@ int main(int argc, char *argv[])
 
     struct parser parser[] = {
         {
-            .long_name = "test",
+            .method = kMethodMultipleVariable,
+            .prefix = "--",
+            .name = "test",
             .var_count = 2,
             .var_types =
                 (ARG_PARSER_VAR_TYPE[]){
