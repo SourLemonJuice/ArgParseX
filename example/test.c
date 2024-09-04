@@ -18,8 +18,8 @@ static void Error_(struct parser_result *result)
 
 int main(int argc, char *argv[])
 {
-    char *test_str1;
-    char *test_str2;
+    char test_str1[] = "test_str1 src";
+    char test_str2[] = "test_str2 src";
 
     struct parser parser[] = {
         {

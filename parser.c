@@ -53,7 +53,7 @@ static void ConvertingStringType_(char *string, enum parser_var_type type, void 
 {
     switch (type) {
     case kTypeString:
-        *(char **)ptr = string;
+        ptr = string;
         break;
     case kTypeInteger:
         // TODO
