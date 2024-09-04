@@ -83,17 +83,17 @@ static void GetFlagBoolToggle_(struct ArgParserData_ *data, int conf_ind)
 }
 
 // TODO implement the other methods
-static void GetFlagMultiArgs_(struct ArgParserData_ *data, int flag_ind /* flag index */)
+static void GetFlagMultiArgs_(struct ArgParserData_ *data, int conf_ind /* config index */)
 {
-    for (int i = 0; i < data->configs[flag_ind].var_count; /* increment at below */) {
+    for (int i = 0; i < data->configs[conf_ind].var_count; /* increment at below */) {
         // i know it's confusing...
         data->arg_ind++;
-        ConvertingStringType_(data->argv[data->arg_ind], data->configs[flag_ind].var_types[i],
-                              data->configs[flag_ind].var_ptrs[i] /* passing secondary pointer */);
+        ConvertingStringType_(data->argv[data->arg_ind], data->configs[conf_ind].var_types[i],
+                              data->configs[conf_ind].var_ptrs[i] /* passing secondary pointer */);
 
         i++;
         // if args has reached the end, but this flag still need more parameter, call the error
-        if (ArgIndexWithinBoundary_(data) == false and i < data->configs[flag_ind].var_count)
+        if (ArgIndexWithinBoundary_(data) == false and i < data->configs[conf_ind].var_count)
             CallError_(data, kArgParserShiftingArg);
     }
 }
