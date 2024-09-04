@@ -3,6 +3,7 @@
     ["hello", "--test", "testStr", "world"]
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,8 +19,9 @@ static void Error_(struct parser_result *result)
 
 int main(int argc, char *argv[])
 {
-    char test_str1[] = "test_str1 src";
-    char test_str2[] = "test_str2 src";
+    char *test_str1 = NULL;
+    char *test_str2 = NULL;
+    bool test_bool = false;
 
     struct parser parser[] = {
         {
@@ -34,15 +36,29 @@ int main(int argc, char *argv[])
                 },
             .var_ptrs =
                 (void *[]){
+                    // we need change those pointer(string)'s value, so passing a secondary pointer
                     &test_str1,
                     &test_str2,
                 },
+        },
+        {
+            .method = kMethodToggle,
+            .prefix = "--",
+            .name = "toggle",
+            .toggle_ptr = &test_bool,
         },
     };
 
     struct parser_result *res = ArgParser(argc, 0, argv, parser, sizeof(parser) / sizeof(struct parser), Error_);
 
     printf("test_str: %s, %s\n", test_str1, test_str2);
+    printf("--toggle: ");
+    if (test_bool == true) {
+        printf("true\n");
+    } else {
+        printf("false\n");
+    }
+
     for (int i = 0; i < res->params_count; i++) {
         printf("%s\n", res->parameters[i]);
     }

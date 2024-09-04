@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 enum parser_status {
@@ -9,7 +10,7 @@ enum parser_status {
 
 // TODO not implemented all
 enum parser_var_method {
-    kMethodBooleanFlag,
+    kMethodToggle,
     kMethodSingleVariable,
     kMethodMultipleVariable,
 };
@@ -28,8 +29,13 @@ struct parser {
     enum parser_var_method method;
     char *name;
     char *prefix;
+    // it can't be a '\0'(like "") just null or another thing
+    char *opr_eq; // TODO not implement
+    // only "toggle" method use it, made that's simple
+    bool *toggle_ptr;
     int var_count;
     enum parser_var_type *var_types;
+    // a list of secondary pointer of actual variable
     void **var_ptrs;
 };
 

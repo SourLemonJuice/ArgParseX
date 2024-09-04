@@ -17,6 +17,7 @@ struct ArgParserData_ {
     int argc;
     char **argv;
     // the arg index being processed, it records the first unprocessed arg
+    // no no no, try to make it to record the last processed arg
     int arg_ind;
     int config_count;
     struct parser *configs;
@@ -47,13 +48,15 @@ static bool ArgIndexWithinBoundary_(struct ArgParserData_ *data)
 }
 
 /*
-    Converting a string to a specific type
+    Converting a string to a specific type.
+    And assign it to a pointer
  */
-static void ConvertingStringType_(char *string, enum parser_var_type type, void *ptr)
+static void ConvertingStringType_(char *string, enum parser_var_type type, void **ptr)
 {
+    // remember to change the first level pointer, but not just change secondary one
     switch (type) {
     case kTypeString:
-        ptr = string;
+        *ptr = string; // TODO debug
         break;
     case kTypeInteger:
         // TODO
@@ -70,15 +73,24 @@ static void ConvertingStringType_(char *string, enum parser_var_type type, void 
     }
 }
 
-// TODO rename it, and implement the other methods
-static void GetFlagArguments_(struct ArgParserData_ *data, int flag_ind /* flag index */)
+/*
+    Invert the bool value of "toggle_ptr" in flag config
+ */
+static void GetFlagBoolToggle_(struct ArgParserData_ *data, int conf_ind)
+{
+    // emm, so long, but... not important?
+    *data->configs[conf_ind].toggle_ptr = not *data->configs[conf_ind].toggle_ptr;
+}
+
+// TODO implement the other methods
+static void GetFlagMultiArgs_(struct ArgParserData_ *data, int flag_ind /* flag index */)
 {
     for (int i = 0; i < data->configs[flag_ind].var_count; /* increment at below */) {
         // i know it's confusing...
-        ConvertingStringType_(data->argv[data->arg_ind], data->configs[flag_ind].var_types[i],
-                              data->configs[flag_ind].var_ptrs[i]);
-
         data->arg_ind++;
+        ConvertingStringType_(data->argv[data->arg_ind], data->configs[flag_ind].var_types[i],
+                              data->configs[flag_ind].var_ptrs[i] /* passing secondary pointer */);
+
         i++;
         // if args has reached the end, but this flag still need more parameter, call the error
         if (ArgIndexWithinBoundary_(data) == false and i < data->configs[flag_ind].var_count)
@@ -108,6 +120,7 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct par
     for (; ArgIndexWithinBoundary_(&data) == true; data.arg_ind++) {
         // is this a flag?
         int prefix_len;
+        bool conf_matched = false;
         for (int i = 0; i < data.config_count; i++) {
             prefix_len = strlen(data.configs[i].prefix);
             // matching prefix
@@ -120,20 +133,25 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct par
 
             // get args
             switch (data.configs[i].method) {
-            case kMethodBooleanFlag:
-                // TODO
+            case kMethodToggle:
+                GetFlagBoolToggle_(&data, i);
                 break;
             case kMethodSingleVariable:
                 // TODO
                 break;
             case kMethodMultipleVariable:
-                data.arg_ind++;
-                GetFlagArguments_(&data, i);
+                GetFlagMultiArgs_(&data, i);
                 break;
             }
+            // don't continue to iterate other configs
+            conf_matched = true;
+            break;
         }
+        if (conf_matched == true)
+            continue;
 
-        // so it's a parameter, add it to result structure
+        // no any config matched this arg. so... it's a parameter, add it to result structure
+        // get flag functions may have run out of args, so check it at first
         if (ArgIndexWithinBoundary_(&data) == true) {
             data.res->params_count += 1;
             size_t this_arg_size = strlen(data.argv[data.arg_ind]) + 1;
