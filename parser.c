@@ -14,13 +14,21 @@ struct ArgParserData_ {
     struct parser_result *res;
     // error callback function pointer, NULL is exit(EXIT_FAILURE)
     void (*ErrorCallback)(struct parser_result *);
-    int argc;
-    char **argv;
+    // arguments count
+    int arg_c;
+    // pointer to arguments
+    char **args;
     // the arg index being processed, it records the first unprocessed arg
     // no no no, try to make it to record the last processed arg
-    int arg_ind;
-    int config_count;
-    struct parser *configs;
+    int arg_idx;
+    // TODO
+    int group_c;
+    // TODO
+    struct flag_group *groups;
+    // configs count
+    int conf_c;
+    // pointer to configs
+    struct parser *confs;
 };
 
 /*
@@ -41,7 +49,7 @@ static void CallError_(struct ArgParserData_ *data, enum parser_status status)
  */
 static bool ArgIndexWithinBoundary_(struct ArgParserData_ *data)
 {
-    if (data->arg_ind < data->argc)
+    if (data->arg_idx < data->arg_c)
         return true;
     else
         return false;
@@ -79,21 +87,21 @@ static void ConvertingStringType_(char *string, enum parser_var_type type, void 
 static void GetFlagBoolToggle_(struct ArgParserData_ *data, int conf_ind)
 {
     // emm, so long, but... not important?
-    *data->configs[conf_ind].toggle_ptr = not *data->configs[conf_ind].toggle_ptr;
+    *data->confs[conf_ind].toggle_ptr = not *data->confs[conf_ind].toggle_ptr;
 }
 
 // TODO implement the other methods
 static void GetFlagMultiArgs_(struct ArgParserData_ *data, int conf_ind /* config index */)
 {
-    for (int i = 0; i < data->configs[conf_ind].var_count; /* increment at below */) {
+    for (int i = 0; i < data->confs[conf_ind].var_count; /* increment at below */) {
         // i know it's confusing...
-        data->arg_ind++;
-        ConvertingStringType_(data->argv[data->arg_ind], data->configs[conf_ind].var_types[i],
-                              data->configs[conf_ind].var_ptrs[i] /* passing secondary pointer */);
+        data->arg_idx++;
+        ConvertingStringType_(data->args[data->arg_idx], data->confs[conf_ind].var_types[i],
+                              data->confs[conf_ind].var_ptrs[i] /* passing secondary pointer */);
 
         i++;
         // if args has reached the end, but this flag still need more parameter, call the error
-        if (ArgIndexWithinBoundary_(data) == false and i < data->configs[conf_ind].var_count)
+        if (ArgIndexWithinBoundary_(data) == false and i < data->confs[conf_ind].var_count)
             CallError_(data, kArgParserShiftingArg);
     }
 }
@@ -104,47 +112,55 @@ static void GetFlagMultiArgs_(struct ArgParserData_ *data, int conf_ind /* confi
 
     TODO I don't like this parameter style
  */
-struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *opts, int opt_count,
-                                void (*ErrorCallback)(struct parser_result *))
+struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct flag_group *groups, struct parser *opts,
+                                int opt_count, void (*ErrorCallback)(struct parser_result *))
 {
     struct ArgParserData_ data = {
-        .res = malloc(sizeof(struct parser_result)), // res -> result
+        .res = malloc(sizeof(struct parser_result)),
         .ErrorCallback = ErrorCallback,
-        .argc = argc,
-        .argv = argv,
-        .arg_ind = last_arg,
-        .configs = opts,
-        .config_count = opt_count,
+        .arg_c = argc,
+        .args = argv,
+        .arg_idx = last_arg,
+        .groups = groups,
+        .conf_c = opt_count,
+        .confs = opts,
     };
 
-    for (; ArgIndexWithinBoundary_(&data) == true; data.arg_ind++) {
-        // is this a flag?
+    for (; ArgIndexWithinBoundary_(&data) == true; data.arg_idx++) {
+        // is this arg is a flag?
         bool conf_matched = false;
-        for (int i = 0; i < data.config_count; i++) {
-            int prefix_len = strlen(data.configs[i].prefix);
+
+        // iteration all the flag configs
+        for (int i = 0; i < data.conf_c; i++) {
+            // some... alias?
+            // those pointers are so long
+            int group_idx = data.confs[i].group_idx;
+
             // matching prefix
-            if (strncmp(data.configs[i].prefix, data.argv[data.arg_ind], prefix_len) != 0)
+            char *prefix = data.groups[group_idx].prefix;
+            int prefix_len = strlen(prefix);
+            if (strncmp(prefix, data.args[data.arg_idx], prefix_len) != 0)
                 continue;
 
             // matching name
             char *assigner_ptr = NULL;
             int name_len = 0;
             // if assigner set to '\0', skip it
-            if (data.configs[i].assigner == '\0') {
-                name_len = strlen(data.argv[data.arg_ind]) - prefix_len;
+            if (data.groups[group_idx].assigner == '\0') {
+                name_len = strlen(data.args[data.arg_idx]) - prefix_len;
             } else {
-                assigner_ptr = strchr(data.argv[data.arg_ind], data.configs[i].assigner);
+                assigner_ptr = strchr(data.args[data.arg_idx], data.groups[group_idx].assigner);
                 if (assigner_ptr == NULL) {
-                    // TODO
+                    // TODO call error
                 }
-                name_len = assigner_ptr - data.argv[data.arg_ind];
+                name_len = assigner_ptr - data.args[data.arg_idx];
                 name_len -= prefix_len;
             }
-            if (strncmp(data.configs[i].name, data.argv[data.arg_ind] + prefix_len, name_len) != 0)
-                    continue;
+            if (strncmp(data.confs[i].name, data.args[data.arg_idx] + prefix_len, name_len) != 0)
+                continue;
 
             // get args
-            switch (data.configs[i].method) {
+            switch (data.confs[i].method) {
             case kMethodToggle:
                 GetFlagBoolToggle_(&data, i);
                 break;
@@ -155,6 +171,7 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct par
                 GetFlagMultiArgs_(&data, i);
                 break;
             }
+
             // don't continue to iterate other configs
             conf_matched = true;
             break;
@@ -166,14 +183,15 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct par
         // get flag functions may have run out of args, so check it at first
         if (ArgIndexWithinBoundary_(&data) == true) {
             data.res->params_count += 1;
-            size_t this_arg_size = strlen(data.argv[data.arg_ind]) + 1;
+            size_t this_arg_size = strlen(data.args[data.arg_idx]) + 1;
 
             data.res->parameters = realloc(data.res->parameters, sizeof(char **) * data.res->params_count);
-            data.res->parameters[data.res->params_count - 1] = data.argv[data.arg_ind];
+            data.res->parameters[data.res->params_count - 1] = data.args[data.arg_idx];
         }
     }
-    // last_arg equal with argc now, but here need a valid index
-    data.res->parsed_argc_index = data.arg_ind - 1;
+
+    // last_arg is equal to argc now, but here need a valid index
+    data.res->parsed_argc_index = data.arg_idx - 1;
 
     // TODO find a way to free those malloc()
     return data.res;

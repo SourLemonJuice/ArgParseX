@@ -23,12 +23,19 @@ int main(int argc, char *argv[])
     char *test_str2 = NULL;
     bool test_bool = false;
 
+    struct flag_group group[] = {
+        {
+            .prefix = "--",
+            .assigner = '\0',
+            .divider = '\0',
+        },
+    };
+
     struct parser parser[] = {
         {
+            .group_idx = 0,
             .method = kMethodMultipleVariable,
-            .prefix = "--",
             .name = "test",
-            .assigner = '\0',
             .var_count = 2,
             .var_types =
                 (ARG_PARSER_VAR_TYPE[]){
@@ -43,14 +50,14 @@ int main(int argc, char *argv[])
                 },
         },
         {
+            .group_idx = 0,
             .method = kMethodToggle,
-            .prefix = "--",
             .name = "toggle",
             .toggle_ptr = &test_bool,
         },
     };
 
-    struct parser_result *res = ArgParser(argc, 0, argv, parser, sizeof(parser) / sizeof(struct parser), Error_);
+    struct parser_result *res = ArgParser(argc, 0, argv, group, parser, sizeof(parser) / sizeof(struct parser), Error_);
 
     printf("test_str: %s, %s\n", test_str1, test_str2);
     printf("--toggle: ");

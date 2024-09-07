@@ -24,12 +24,8 @@ enum parser_var_type {
     kTypeDouble,
 };
 
-// TODO change structure name
-struct parser {
-    int group_idx;
-    enum parser_var_method method;
-    // name of flag, like the "flagName" of "--flagName"
-    char *name;
+struct flag_group
+{
     // prefix of flag, like the "--" of "--flag"
     char *prefix;
     // separators can't be a '\0'(like "") just NULL or another thing
@@ -39,6 +35,14 @@ struct parser {
     // separator: parameter separator
     // TODO not implement
     char divider;
+};
+
+// TODO change structure name
+struct parser {
+    int group_idx;
+    enum parser_var_method method;
+    // name of flag, like the "flagName" of "--flagName"
+    char *name;
     // only "toggle" method use it, made that's simple
     bool *toggle_ptr;
     int var_count;
@@ -58,5 +62,5 @@ struct parser_result {
 // give user a macro but not enum's name?
 #define ARG_PARSER_VAR_TYPE enum parser_var_type
 
-struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct parser *options, int opt_num,
-                                void (*ErrorCallback)(struct parser_result *));
+struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct flag_group *groups, struct parser *opts,
+                                int opt_count, void (*ErrorCallback)(struct parser_result *));
