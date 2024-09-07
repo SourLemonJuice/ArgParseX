@@ -119,17 +119,29 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct par
 
     for (; ArgIndexWithinBoundary_(&data) == true; data.arg_ind++) {
         // is this a flag?
-        int prefix_len;
         bool conf_matched = false;
         for (int i = 0; i < data.config_count; i++) {
-            prefix_len = strlen(data.configs[i].prefix);
+            int prefix_len = strlen(data.configs[i].prefix);
             // matching prefix
             if (strncmp(data.configs[i].prefix, data.argv[data.arg_ind], prefix_len) != 0)
                 continue;
+
             // matching name
-            // TODO need implement custom "=" operators
-            if (strcmp(data.configs[i].name, data.argv[data.arg_ind] + prefix_len) != 0)
-                continue;
+            char *assigner_ptr = NULL;
+            int name_len = 0;
+            // if assigner set to '\0', skip it
+            if (data.configs[i].assigner == '\0') {
+                name_len = strlen(data.argv[data.arg_ind]) - prefix_len;
+            } else {
+                assigner_ptr = strchr(data.argv[data.arg_ind], data.configs[i].assigner);
+                if (assigner_ptr == NULL) {
+                    // TODO
+                }
+                name_len = assigner_ptr - data.argv[data.arg_ind];
+                name_len -= prefix_len;
+            }
+            if (strncmp(data.configs[i].name, data.argv[data.arg_ind] + prefix_len, name_len) != 0)
+                    continue;
 
             // get args
             switch (data.configs[i].method) {

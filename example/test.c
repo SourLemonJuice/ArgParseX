@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
             .method = kMethodMultipleVariable,
             .prefix = "--",
             .name = "test",
+            .assigner = '\0',
             .var_count = 2,
             .var_types =
                 (ARG_PARSER_VAR_TYPE[]){

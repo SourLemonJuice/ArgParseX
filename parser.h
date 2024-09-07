@@ -26,11 +26,19 @@ enum parser_var_type {
 
 // TODO change structure name
 struct parser {
+    int group_idx;
     enum parser_var_method method;
+    // name of flag, like the "flagName" of "--flagName"
     char *name;
+    // prefix of flag, like the "--" of "--flag"
     char *prefix;
-    // it can't be a '\0'(like "") just null or another thing
-    char *opr_eq; // TODO not implement
+    // separators can't be a '\0'(like "") just NULL or another thing
+    // separator: parameter assigner
+    // TODO not implement
+    char assigner;
+    // separator: parameter separator
+    // TODO not implement
+    char divider;
     // only "toggle" method use it, made that's simple
     bool *toggle_ptr;
     int var_count;
