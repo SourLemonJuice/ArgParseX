@@ -16,18 +16,19 @@ struct ArgParserData_ {
     void (*ErrorCallback)(struct parser_result *);
     // arguments count
     int arg_c;
-    // pointer to arguments
+    // pointer to arguments array
     char **args;
-    // the arg index being processed, it records the first unprocessed arg
+    // the arg index being processed, it records the first unprocessed arg.
     // no no no, try to make it to record the last processed arg
     int arg_idx;
-    // TODO
-    int group_c;
-    // TODO
+    // pointer to groups array.
+    // if you ask me, why don't use "group_c"?
+    // emm... I trust the programer can figure out the array index in their hands.
+    // then there is no need for a "new" hash table here
     struct flag_group *groups;
     // configs count
     int conf_c;
-    // pointer to configs
+    // pointer to configs array
     struct parser *confs;
 };
 
@@ -138,9 +139,12 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct fla
 
             // matching prefix
             char *prefix = data.groups[group_idx].prefix;
-            int prefix_len = strlen(prefix);
-            if (strncmp(prefix, data.args[data.arg_idx], prefix_len) != 0)
-                continue;
+            int prefix_len = 0;
+            if (prefix[0] != '\0') {
+                prefix_len = strlen(prefix);
+                if (strncmp(prefix, data.args[data.arg_idx], prefix_len) != 0)
+                    continue;
+            }
 
             // matching name
             char *assigner_ptr = NULL;

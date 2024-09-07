@@ -24,11 +24,11 @@ enum parser_var_type {
     kTypeDouble,
 };
 
+// set separator to ""/'\0' to skip them
 struct flag_group
 {
     // prefix of flag, like the "--" of "--flag"
     char *prefix;
-    // separators can't be a '\0'(like "") just NULL or another thing
     // separator: parameter assigner
     // TODO not implement
     char assigner;
