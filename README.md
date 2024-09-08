@@ -1,7 +1,7 @@
-# ArgParseX.c
+# ArgParseX
 
 > [!WARNING]
-> This project is still under development
+> This project is still under development, it doesn't even have a usable API
 
 Comprehensive and configurable command line arguments parser library.\
 Written for C language
