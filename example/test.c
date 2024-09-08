@@ -26,8 +26,8 @@ int main(int argc, char *argv[])
     struct flag_group group[] = {
         {
             .prefix = "--",
-            .assigner = "",
-            .divider = "",
+            .assigner = '=',
+            .delimiter = ',',
         },
     };
 

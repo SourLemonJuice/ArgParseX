@@ -24,17 +24,15 @@ enum parser_var_type {
     kTypeDouble,
 };
 
-// set separator to ""/'\0' to skip them
+// set separator to '\0' to skip them
 struct flag_group
 {
     // prefix of flag, like the "--" of "--flag"
     char *prefix;
-    // separator: parameter assigner
-    // TODO not implement
+    // parameter assigner
     char assigner;
-    // separator: parameter separator
-    // TODO not implement
-    char divider;
+    // parameter delimiter
+    char delimiter;
 };
 
 // TODO change structure name

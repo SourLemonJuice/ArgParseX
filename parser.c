@@ -59,13 +59,26 @@ static bool ArgIndexWithinBoundary_(struct ArgParserData_ *data)
 /*
     Converting a string to a specific type.
     And assign it to a pointer
+
+    The "number" is similar to strncmp()'s "n"
  */
-static void ConvertingStringType_(char *string, enum parser_var_type type, void **ptr)
+static void StringNumberToVariable_(char *string, int number, enum parser_var_type type, void **ptr)
 {
     // remember to change the first level pointer, but not just change secondary one
     switch (type) {
     case kTypeString:
-        *ptr = string; // TODO debug
+        int str_len = strlen(string);
+        int actual_len;
+        size_t actual_size;
+        if (number < str_len)
+            actual_len = number;
+        else
+            actual_len = str_len;
+        // allocate a new string
+        actual_size = actual_len * sizeof(char) + 1;
+        *ptr = malloc(actual_size);
+        memcpy(*ptr, string, actual_size);
+        (*(char **)ptr)[actual_len] = '\0';
         break;
     case kTypeInteger:
         // TODO
@@ -85,25 +98,67 @@ static void ConvertingStringType_(char *string, enum parser_var_type type, void 
 /*
     Invert the bool value of "toggle_ptr" in flag config
  */
-static void GetFlagBoolToggle_(struct ArgParserData_ *data, int conf_ind)
+static void GetFlagBoolToggle_(struct ArgParserData_ *data, int conf_idx)
 {
-    // emm, so long, but... not important?
-    *data->confs[conf_ind].toggle_ptr = not *data->confs[conf_ind].toggle_ptr;
+    bool *ptr = data->confs[conf_idx].toggle_ptr;
+    *ptr = not *ptr;
 }
 
 // TODO implement the other methods
-static void GetFlagMultiArgs_(struct ArgParserData_ *data, int conf_ind /* config index */)
+/*
+    If assigner_ptr is NULL, then use the next argument string, which also respect the delimiter
+ */
+static void GetFlagMultiArgs_(struct ArgParserData_ *data, int conf_idx /* config index */, char *assigner_ptr)
 {
-    for (int i = 0; i < data->confs[conf_ind].var_count; /* increment at below */) {
-        // i know it's confusing...
-        data->arg_idx++;
-        ConvertingStringType_(data->args[data->arg_idx], data->confs[conf_ind].var_types[i],
-                              data->confs[conf_ind].var_ptrs[i] /* passing secondary pointer */);
+    char delim = data->groups[data->confs[conf_idx].group_idx].delimiter;
+    char *param_start;
+    int param_len = 0;
+    char *next_delim_ptr;
 
+    // set the first parameter pointer
+    // TODO now is not mandatory, but it should be configurable
+    if (assigner_ptr == NULL) {
+        data->arg_idx++;
+        param_start = data->args[data->arg_idx];
+    } else {
+        param_start = assigner_ptr + 1;
+    }
+
+    // TODO but if we don't have limit...
+    for (int i = 0; i < data->confs[conf_idx].var_count; /* increment at below */) {
+        // set the parameter length
+        if (delim == '\0') {
+            param_len = strlen(param_start);
+        } else {
+            next_delim_ptr = strchr(param_start, delim);
+            // TODO but what if user inputs the wrong format? this should be configurable
+            if (next_delim_ptr == NULL) {
+                // if parameters are not enough
+                if (i + 1 < data->confs[conf_idx].var_count)
+                    CallError_(data, kArgParserShiftingArg);
+                else
+                    param_len = strlen(param_start);
+            } else {
+                param_len = next_delim_ptr - param_start;
+            }
+        }
+
+        // i know it's confusing...
+        StringNumberToVariable_(param_start, param_len, data->confs[conf_idx].var_types[i],
+                                data->confs[conf_idx].var_ptrs[i] /* passing secondary pointer */);
+
+        // update parameter start pointer
         i++;
-        // if args has reached the end, but this flag still need more parameter, call the error
-        if (ArgIndexWithinBoundary_(data) == false and i < data->confs[conf_ind].var_count)
-            CallError_(data, kArgParserShiftingArg);
+        if (delim == '\0') {
+            // TODO there may have some bug
+            data->arg_idx++;
+            // if args has reached the end, but this flag still need more parameter, call the error
+            if (ArgIndexWithinBoundary_(data) == false and i < data->confs[conf_idx].var_count)
+                CallError_(data, kArgParserShiftingArg);
+            param_start = data->args[data->arg_idx];
+        } else {
+            param_start = next_delim_ptr + 1;
+        }
     }
 }
 
@@ -155,7 +210,7 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct fla
             } else {
                 assigner_ptr = strchr(data.args[data.arg_idx], data.groups[group_idx].assigner);
                 if (assigner_ptr == NULL) {
-                    // TODO call error
+                    // TODO call error?
                 }
                 name_len = assigner_ptr - data.args[data.arg_idx];
                 name_len -= prefix_len;
@@ -172,7 +227,7 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct fla
                 // TODO
                 break;
             case kMethodMultipleVariable:
-                GetFlagMultiArgs_(&data, i);
+                GetFlagMultiArgs_(&data, i, assigner_ptr);
                 break;
             }
 
