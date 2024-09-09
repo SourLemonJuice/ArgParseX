@@ -11,8 +11,9 @@ enum parser_status {
 // TODO not implemented all
 enum parser_var_method {
     kMethodToggle,
-    kMethodSingleVariable,
+    kMethodSingleVariable, // TODO
     kMethodMultipleVariable,
+    // TODO set bool
 };
 
 enum parser_var_type {
