@@ -1,8 +1,3 @@
-/*
-    Test it with these arguments:
-    ["hello", "--test", "testStr", "world"]
- */
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
