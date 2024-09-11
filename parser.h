@@ -5,7 +5,9 @@
 
 enum parser_status {
     kArgParserSuccess,
+    kArgParserUnknownError,
     kArgParserShiftingArg,
+    kArgParserFlagParamFormatIncorrect,
 };
 
 // TODO not implemented all
@@ -25,9 +27,13 @@ enum parser_var_type {
     kTypeDouble,
 };
 
+// flag's range is uint16_t
+#define ARG_GROUP_MANDATORY_ASSIGNER 0b1
+#define ARG_GROUP_MANDATORY_DELIMITER 0b1 << 1
+
 // set separator to '\0' to skip them
-struct flag_group
-{
+struct flag_group {
+    uint16_t flag;
     // prefix of flag, like the "--" of "--flag"
     char *prefix;
     // parameter assigner

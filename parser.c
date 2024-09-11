@@ -46,14 +46,25 @@ static void CallError_(struct ArgParserData_ *data, enum parser_status status)
 }
 
 /*
-    Check if the arg has reached the boundary
+    Check if the arg has reached the boundary.
+    idx_offset will be added to data->arg_idx. This may save something?
  */
-static bool ArgIndexWithinBoundary_(struct ArgParserData_ *data)
+static bool ArgIndexWithinBoundary_(struct ArgParserData_ *data, int idx_offset)
 {
-    if (data->arg_idx < data->arg_c)
+    if (data->arg_idx + idx_offset < data->arg_c)
         return true;
     else
         return false;
+}
+
+/*
+    Safe shift arguments
+ */
+static void ShiftArguments_(struct ArgParserData_ *data, int offset)
+{
+    if (ArgIndexWithinBoundary_(data, offset) == false)
+        CallError_(data, kArgParserShiftingArg);
+    data->arg_idx += offset;
 }
 
 /*
@@ -80,21 +91,19 @@ static void StringNumberToVariable_(char *source_str, int number, enum parser_va
     value_str[actual_len] = '\0'; // actual_len is the last index of this string
 
     // remember to change the first level pointer, but not just change secondary one
+    // if can, the value_str needs to free up
+    // TODO implement other types
     switch (type) {
     case kTypeString:
         *ptr = value_str;
         break;
     case kTypeInteger:
-        // TODO
         break;
     case kTypeBoolean:
-        // TODO
         break;
     case kTypeFloat:
-        // TODO
         break;
     case kTypeDouble:
-        // TODO
         break;
     }
 }
@@ -114,55 +123,144 @@ static void GetFlagBoolToggle_(struct ArgParserData_ *data, int conf_idx)
  */
 static void GetFlagMultiArgs_(struct ArgParserData_ *data, int conf_idx /* config index */, char *assigner_ptr)
 {
-    char delim = data->groups[data->confs[conf_idx].group_idx].delimiter;
+    struct flag_group *group_ptr = &data->groups[data->confs[conf_idx].group_idx];
+    char delim = group_ptr->delimiter;
     char *param_start;
-    int param_len = 0;
+    int param_len;
     char *next_delim_ptr;
+    bool first_param = true;
 
-    for (int i = 0; i < data->confs[conf_idx].var_count; i++) {
-        // TODO ugly indentation
-        // set parameter start pointer
-        if (i == 0) {
-            // set the first parameter pointer
-            // TODO now is not mandatory, but it should be configurable
-            if (assigner_ptr == NULL) {
-                data->arg_idx++;
-                param_start = data->args[data->arg_idx];
+    // init param_start
+    if (assigner_ptr != NULL) {
+        param_start = assigner_ptr + 1;
+    } else {
+        ShiftArguments_(data, 1);
+        param_start = data->args[data->arg_idx];
+    }
+
+    enum {
+        kPartitionNotSet,
+        kPartitionByArguments,
+        kPartitionByDelimiter,
+    } partition_type = kPartitionNotSet;
+
+    for (int var_idx = 0; var_idx < data->confs[conf_idx].var_count; var_idx++) {
+        // fix the parameter get type
+        if (partition_type == kPartitionNotSet) {
+            next_delim_ptr = strchr(param_start, delim);
+            if (next_delim_ptr == NULL) {
+                if ((group_ptr->flag & ARG_GROUP_MANDATORY_DELIMITER) != 0)
+                    CallError_(data, kArgParserFlagParamFormatIncorrect);
+                partition_type = kPartitionByArguments;
             } else {
-                param_start = assigner_ptr + 1;
-            }
-        } else {
-            if (delim == '\0') {
-                data->arg_idx++;
-                // if args has reached the end, but this flag still need more parameter, call the error
-                if (ArgIndexWithinBoundary_(data) == false and i < data->confs[conf_idx].var_count)
-                    CallError_(data, kArgParserShiftingArg);
-                param_start = data->args[data->arg_idx];
-            } else {
-                param_start = next_delim_ptr + 1;
+                partition_type = kPartitionByDelimiter;
             }
         }
 
-        // set the parameter length
-        if (delim == '\0') {
+        switch (partition_type) {
+        case kPartitionNotSet:
+            // never impossible to enter. just make compiler don't take warning
+            CallError_(data, kArgParserUnknownError);
+            break;
+        case kPartitionByArguments:
+            if (first_param == true) {
+                first_param = false;
+            } else {
+                // if args has reached the end, but this flag still need more parameter, call the error
+                ShiftArguments_(data, 1);
+                param_start = data->args[data->arg_idx];
+            }
             param_len = strlen(param_start);
-        } else {
+            break;
+        case kPartitionByDelimiter:
+            if (first_param == true)
+                first_param = false;
+            else
+                param_start = next_delim_ptr + 1;
+
             next_delim_ptr = strchr(param_start, delim);
-            // TODO but what if user inputs the wrong format? this should be configurable
             if (next_delim_ptr == NULL) {
-                // if parameters are not enough
-                if (i + 1 < data->confs[conf_idx].var_count)
-                    CallError_(data, kArgParserShiftingArg);
-                else
-                    param_len = strlen(param_start);
+                // if this is not the last parameter, the format is incorrect
+                if (var_idx + 1 < data->confs[conf_idx].var_count) {
+                    CallError_(data, kArgParserFlagParamFormatIncorrect);
+                }
+                param_len = strlen(param_start);
             } else {
                 param_len = next_delim_ptr - param_start;
             }
+            break;
         }
 
         // i know it's confusing...
-        StringNumberToVariable_(param_start, param_len, data->confs[conf_idx].var_types[i],
-                                data->confs[conf_idx].var_ptrs[i] /* passing secondary pointer */);
+        StringNumberToVariable_(param_start, param_len, data->confs[conf_idx].var_types[var_idx],
+                                data->confs[conf_idx].var_ptrs[var_idx] /* passing secondary pointer */);
+    }
+}
+
+static void IterationConfigs_(struct ArgParserData_ *data)
+{
+    // iteration all the flag configs
+    for (int i = 0; i < data->conf_c; i++) {
+        // some... alias?
+        // those pointers are so long
+        struct flag_group *group_ptr = &data->groups[data->confs[i].group_idx];
+
+        // matching prefix
+        char *prefix = group_ptr->prefix;
+        int prefix_len = 0;
+        if (prefix[0] != '\0') {
+            prefix_len = strlen(prefix);
+            if (strncmp(prefix, data->args[data->arg_idx], prefix_len) != 0)
+                continue;
+        }
+
+        // matching name
+        char *assigner_ptr = NULL;
+        int name_len = 0;
+        // if assigner set to '\0', skip it
+        if (group_ptr->assigner == '\0') {
+            name_len = strlen(data->args[data->arg_idx]) - prefix_len;
+        } else {
+            assigner_ptr = strchr(data->args[data->arg_idx], group_ptr->assigner);
+            // TODO this block breaks the no parameter flag's parsing
+            if (assigner_ptr == NULL) {
+                if ((group_ptr->flag & ARG_GROUP_MANDATORY_ASSIGNER) != 0)
+                    CallError_(data, kArgParserShiftingArg);
+                name_len = strlen(data->args[data->arg_idx]) - prefix_len;
+                ShiftArguments_(data, 1);
+            } else {
+                name_len = assigner_ptr - data->args[data->arg_idx];
+                name_len -= prefix_len;
+            }
+        }
+        if (strncmp(data->confs[i].name, data->args[data->arg_idx] + prefix_len, name_len) != 0)
+            continue;
+
+        // get args
+        switch (data->confs[i].method) {
+        case kMethodToggle:
+            GetFlagBoolToggle_(data, i);
+            break;
+        case kMethodSingleVariable:
+            // TODO
+            break;
+        case kMethodMultipleVariable:
+            GetFlagMultiArgs_(data, i, assigner_ptr);
+            break;
+        }
+
+        // don't continue to iterate other configs
+        return;
+    }
+
+    // no any config matched this arg. so... it's a parameter, add it to result structure
+    // get flag functions may have run out of args, so check it at first
+    if (ArgIndexWithinBoundary_(data, 0) == true) {
+        data->res->params_count += 1;
+        size_t this_arg_size = strlen(data->args[data->arg_idx]) + 1;
+
+        data->res->parameters = realloc(data->res->parameters, sizeof(char **) * data->res->params_count);
+        data->res->parameters[data->res->params_count - 1] = data->args[data->arg_idx];
     }
 }
 
@@ -186,71 +284,8 @@ struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct fla
         .confs = opts,
     };
 
-    for (; ArgIndexWithinBoundary_(&data) == true; data.arg_idx++) {
-        // is this arg is a flag?
-        bool conf_matched = false;
-
-        // iteration all the flag configs
-        for (int i = 0; i < data.conf_c; i++) {
-            // some... alias?
-            // those pointers are so long
-            int group_idx = data.confs[i].group_idx;
-
-            // matching prefix
-            char *prefix = data.groups[group_idx].prefix;
-            int prefix_len = 0;
-            if (prefix[0] != '\0') {
-                prefix_len = strlen(prefix);
-                if (strncmp(prefix, data.args[data.arg_idx], prefix_len) != 0)
-                    continue;
-            }
-
-            // matching name
-            char *assigner_ptr = NULL;
-            int name_len = 0;
-            // if assigner set to '\0', skip it
-            if (data.groups[group_idx].assigner == '\0') {
-                name_len = strlen(data.args[data.arg_idx]) - prefix_len;
-            } else {
-                assigner_ptr = strchr(data.args[data.arg_idx], data.groups[group_idx].assigner);
-                if (assigner_ptr == NULL) {
-                    // TODO call error?
-                }
-                name_len = assigner_ptr - data.args[data.arg_idx];
-                name_len -= prefix_len;
-            }
-            if (strncmp(data.confs[i].name, data.args[data.arg_idx] + prefix_len, name_len) != 0)
-                continue;
-
-            // get args
-            switch (data.confs[i].method) {
-            case kMethodToggle:
-                GetFlagBoolToggle_(&data, i);
-                break;
-            case kMethodSingleVariable:
-                // TODO
-                break;
-            case kMethodMultipleVariable:
-                GetFlagMultiArgs_(&data, i, assigner_ptr);
-                break;
-            }
-
-            // don't continue to iterate other configs
-            conf_matched = true;
-            break;
-        }
-        if (conf_matched == true)
-            continue;
-
-        // no any config matched this arg. so... it's a parameter, add it to result structure
-        // get flag functions may have run out of args, so check it at first
-        if (ArgIndexWithinBoundary_(&data) == true) {
-            data.res->params_count += 1;
-            size_t this_arg_size = strlen(data.args[data.arg_idx]) + 1;
-
-            data.res->parameters = realloc(data.res->parameters, sizeof(char **) * data.res->params_count);
-            data.res->parameters[data.res->params_count - 1] = data.args[data.arg_idx];
-        }
+    for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
+        IterationConfigs_(&data);
     }
 
     // last_arg is equal to argc now, but here need a valid index

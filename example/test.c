@@ -16,13 +16,22 @@ int main(int argc, char *argv[])
 {
     char *test_str1 = NULL;
     char *test_str2 = NULL;
+    char *test_str21 = NULL;
+    char *test_str22 = NULL;
     bool test_bool = false;
 
     struct flag_group group[] = {
         {
+            .flag = ARG_GROUP_MANDATORY_ASSIGNER | ARG_GROUP_MANDATORY_DELIMITER,
             .prefix = "--",
             .assigner = '=',
             .delimiter = ',',
+        },
+        {
+            .flag = 0,
+            .prefix = "++",
+            .assigner = '~',
+            .delimiter = '-',
         },
     };
 
@@ -50,11 +59,28 @@ int main(int argc, char *argv[])
             .name = "toggle",
             .toggle_ptr = &test_bool,
         },
+        {
+            .group_idx = 1,
+            .method = kMethodMultipleVariable,
+            .name = "test2",
+            .var_count = 1,
+            .var_types =
+                (ARG_PARSER_VAR_TYPE[]){
+                    kTypeString,
+                    kTypeString,
+                },
+            .var_ptrs =
+                (void *[]){
+                    &test_str21,
+                    &test_str22,
+                },
+        },
     };
 
     struct parser_result *res = ArgParser(argc, 0, argv, group, parser, sizeof(parser) / sizeof(struct parser), Error_);
 
-    printf("test_str: %s, %s\n", test_str1, test_str2);
+    printf("test_str group 0: %s, %s\n", test_str1, test_str2);
+    printf("test_str group 1: %s, %s\n", test_str21, test_str22);
     printf("--toggle: ");
     if (test_bool == true) {
         printf("true\n");
