@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ARG_PARSE_X_H_
+#define ARG_PARSE_X_H_
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -73,5 +74,8 @@ struct ArgpxResult {
 // give user a macro but not enum's name?
 #define ARG_PARSER_VAR_TYPE enum ArgpxVarType
 
+char *ArgpxStatusToString(enum ArgpxStatus status);
 struct ArgpxResult *ArgParser(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
                               struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));
+
+#endif

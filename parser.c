@@ -45,6 +45,35 @@ static void CallError_(struct UnifiedData_ data[static 1], enum ArgpxStatus stat
 }
 
 /*
+    Convert structure ArgpxResult's ArgpxStatus enum to string
+ */
+char *ArgpxStatusToString(enum ArgpxStatus status)
+{
+    switch (status) {
+    case kArgpxStatusSuccess:
+        return "Processing success";
+        break;
+    case kArgpxStatusFailure:
+        return "Generic unknown error";
+        break;
+    case kArgpxStatusShiftingArg:
+        return "An error occurred when shifting the argument";
+        break;
+    case kArgpxStatusNoAssigner:
+        return "No assignment symbol(.assigner)";
+        break;
+    case kArgpxStatusFlagParamFormatIncorrect:
+        return "Flag parameter format incorrect";
+        break;
+    case kArgpxStatusUnknownFlag:
+        return "Unknown flag but the group matched";
+        break;
+    }
+
+    return NULL;
+}
+
+/*
     Check if the arg has reached the boundary.
     idx_offset will be added to data->arg_idx. This may save something?
  */

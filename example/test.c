@@ -7,6 +7,7 @@
 static void Error_(struct ArgpxResult *result)
 {
     printf("Error, parser status: %d\n", result->status);
+    printf("Status to string: %s\n", ArgpxStatusToString(result->status));
     exit(EXIT_FAILURE);
 
     return;
