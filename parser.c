@@ -68,6 +68,9 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     case kArgpxStatusUnknownFlag:
         return "Unknown flag but the group matched";
         break;
+    case kArgpxStatusMethodAvailabilityError:
+        return "Method availability error. Maybe that's not available in the current setup";
+        break;
     }
 
     return NULL;
@@ -122,10 +125,12 @@ static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct Argpx
         return false;
         break;
     case kArgpxMethodMultipleParam:
-    case kArgpxMethodSingleParam:
         if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_ASSIGNER) != 0)
             return true;
         return false;
+        break;
+    default:
+        CallError_(data, kArgpxStatusMethodAvailabilityError);
         break;
     }
 
@@ -197,12 +202,11 @@ static void GetFlagBoolToggle_(struct UnifiedData_ data[static 1], struct ArgpxF
     *ptr = not *ptr;
 }
 
-// TODO implement the other methods
 /*
-    If assigner_ptr is NULL, then use the next argument string, which also respect the delimiter
+    If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
  */
 static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
-                              char *assigner_ptr)
+                              char *param_start_ptr)
 {
     struct ArgpxFlagGroup *group_ptr = &data->groups[conf_ptr->group_idx];
     char delim = group_ptr->delimiter;
@@ -212,8 +216,8 @@ static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFl
     bool first_param = true;
 
     // init param_start
-    if (assigner_ptr != NULL) {
-        param_start = assigner_ptr + 1;
+    if (param_start_ptr != NULL) {
+        param_start = param_start_ptr;
     } else {
         ShiftArguments_(data, 1);
         param_start = data->args[data->arg_idx];
@@ -297,17 +301,37 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
     return -1;
 }
 
-static void IterationConfigs_(struct UnifiedData_ data[static 1])
+/*
+    Matching a name in all flag configs.
+    If name_len <= 0, the value will dynamic by the name length of config
+ */
+static struct ArgpxFlag *MatchingConfigsName_(struct UnifiedData_ data[static 1], int g_idx, char *name_start,
+                                              int name_len)
 {
-    int g_idx = DetectGroupIndex_(data);
-    struct ArgpxFlagGroup *g_ptr = GroupIndexToPointer_(data, g_idx);
-    if (g_ptr == NULL) {
-        GetCommandParameter_(data);
-        return;
+    // iteration all the flag configs
+    int final_len;
+    for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
+        struct ArgpxFlag *temp_conf_ptr = &data->confs[conf_idx];
+        if (temp_conf_ptr->group_idx != g_idx)
+            continue;
+
+        if (name_len <= 0)
+            final_len = strlen(temp_conf_ptr->name);
+        else
+            final_len = name_len;
+
+        // matching name
+        if (strncmp(name_start, temp_conf_ptr->name, final_len) == 0) {
+            return temp_conf_ptr;
+        }
     }
 
-    // TODO if groupable
+    return NULL;
+}
 
+static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_idx,
+                                      struct ArgpxFlagGroup g_ptr[static 1])
+{
     char *arg = data->args[data->arg_idx];
     char *assigner_ptr = strchr(arg, g_ptr->assigner); // if NULL no assigner
     char *name_start = arg + strlen(g_ptr->prefix);
@@ -317,19 +341,8 @@ static void IterationConfigs_(struct UnifiedData_ data[static 1])
     else
         name_len = strlen(name_start);
 
-    // iteration all the flag configs
-    struct ArgpxFlag *conf_ptr = NULL;
-    for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
-        struct ArgpxFlag *temp_conf_ptr = &data->confs[conf_idx];
-        if (temp_conf_ptr->group_idx != g_idx)
-            continue;
+    struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start, name_len);
 
-        // matching name
-        if (strncmp(name_start, temp_conf_ptr->name, name_len) == 0) {
-            conf_ptr = temp_conf_ptr;
-            break;
-        }
-    }
     // some check
     if (conf_ptr == NULL)
         CallError_(data, kArgpxStatusUnknownFlag);
@@ -341,12 +354,50 @@ static void IterationConfigs_(struct UnifiedData_ data[static 1])
     case kArgpxMethodToggleBool:
         GetFlagBoolToggle_(data, conf_ptr);
         break;
-    case kArgpxMethodSingleParam:
-        // TODO
-        break;
     case kArgpxMethodMultipleParam:
-        GetFlagMultiArgs_(data, conf_ptr, assigner_ptr);
+        GetFlagMultiArgs_(data, conf_ptr, assigner_ptr + 1);
         break;
+    default:
+        CallError_(data, kArgpxStatusMethodAvailabilityError);
+        break;
+    }
+}
+
+static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_idx,
+                                    struct ArgpxFlagGroup g_ptr[static 1])
+{
+    char *arg = data->args[data->arg_idx];
+    char *assigner_ptr = strchr(arg, g_ptr->assigner); // if NULL no assigner
+    char *name_start = arg + strlen(g_ptr->prefix);
+    int prev_name_len = 0;
+    int remaining_len;
+    if (assigner_ptr != NULL)
+        remaining_len = assigner_ptr - name_start;
+    else
+        remaining_len = strlen(name_start);
+
+    while (true) {
+        name_start += prev_name_len;
+        remaining_len -= prev_name_len;
+        if (remaining_len <= 0)
+            break;
+
+        struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start, 0);
+        if (conf_ptr == NULL)
+            CallError_(data, kArgpxStatusUnknownFlag);
+        if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
+            CallError_(data, kArgpxStatusNoAssigner);
+
+        switch (conf_ptr->method) {
+        case kArgpxMethodMultipleParam:
+            GetFlagMultiArgs_(data, conf_ptr, name_start + remaining_len + 1);
+            break;
+        default:
+            CallError_(data, kArgpxStatusMethodAvailabilityError);
+            break;
+        }
+
+        prev_name_len = strlen(conf_ptr->name);
     }
 }
 
@@ -372,7 +423,17 @@ struct ArgpxResult *ArgParser(int argc, int arg_base, char *argv[], struct Argpx
     };
 
     for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
-        IterationConfigs_(&data);
+        int g_idx = DetectGroupIndex_(&data);
+        struct ArgpxFlagGroup *g_ptr = GroupIndexToPointer_(&data, g_idx);
+        if (g_ptr == NULL) {
+            GetCommandParameter_(&data);
+            continue;
+        }
+
+        if ((g_ptr->flag & ARGPX_GROUP_FLAG_GROUPABLE) != 0)
+            ParseArgumentGroupable_(&data, g_idx, g_ptr);
+        else
+            ParseArgumentIndependent_(&data, g_idx, g_ptr);
     }
 
     // last_arg is equal to argc now, but here need a valid index

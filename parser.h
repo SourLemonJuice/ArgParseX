@@ -11,6 +11,7 @@ enum ArgpxStatus {
     kArgpxStatusNoAssigner,
     kArgpxStatusFlagParamFormatIncorrect,
     kArgpxStatusUnknownFlag,
+    kArgpxStatusMethodAvailabilityError,
 };
 
 // TODO not implemented all
@@ -35,6 +36,7 @@ enum ArgpxVarType {
 #define ARGPX_GROUP_MANDATORY_DELIMITER 0b1 << 1
 #define ARGPX_GROUP_FLAG_GROUPABLE 0b1 << 2
 
+// TODO implement '\0'
 struct ArgpxFlagGroup {
     uint16_t flag;
     // prefix of flag, like the "--" of "--flag"
