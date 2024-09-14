@@ -279,10 +279,10 @@ static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFl
 
 /*
     Detect the group where the argument is located.
-    A group pointer will be returned.
-    Return NULL: no group matched
+    A group index will be returned. Use GroupIndexToPointer_() convert it to a pointer.
+    Return negative int: no group matched
  */
-static struct ArgpxFlagGroup *DetectGroup_(struct UnifiedData_ data[static 1])
+static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 {
     char *arg_ptr;
     struct ArgpxFlagGroup *g_ptr;
@@ -291,15 +291,16 @@ static struct ArgpxFlagGroup *DetectGroup_(struct UnifiedData_ data[static 1])
         g_ptr = GroupIndexToPointer_(data, g_idx);
 
         if (strncmp(arg_ptr, g_ptr->prefix, strlen(g_ptr->prefix)) == 0)
-            return g_ptr;
+            return g_idx;
     }
 
-    return NULL;
+    return -1;
 }
 
 static void IterationConfigs_(struct UnifiedData_ data[static 1])
 {
-    struct ArgpxFlagGroup *g_ptr = DetectGroup_(data);
+    int g_idx = DetectGroupIndex_(data);
+    struct ArgpxFlagGroup *g_ptr = GroupIndexToPointer_(data, g_idx);
     if (g_ptr == NULL) {
         GetCommandParameter_(data);
         return;
@@ -318,11 +319,14 @@ static void IterationConfigs_(struct UnifiedData_ data[static 1])
 
     // iteration all the flag configs
     struct ArgpxFlag *conf_ptr = NULL;
-    for (int idx = 0; idx < data->conf_c; idx++) {
-        struct ArgpxFlag *temp_conf = &data->confs[idx];
+    for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
+        struct ArgpxFlag *temp_conf_ptr = &data->confs[conf_idx];
+        if (temp_conf_ptr->group_idx != g_idx)
+            continue;
+
         // matching name
-        if (strncmp(name_start, temp_conf->name, name_len) == 0) {
-            conf_ptr = temp_conf;
+        if (strncmp(name_start, temp_conf_ptr->name, name_len) == 0) {
+            conf_ptr = temp_conf_ptr;
             break;
         }
     }
