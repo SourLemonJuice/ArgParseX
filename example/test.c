@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
             .group_idx = 1,
             .method = kMethodMultipleVariable,
             .name = "test2",
-            .var_count = 1,
+            .var_count = 2,
             .var_types =
                 (ARG_PARSER_VAR_TYPE[]){
                     kTypeString,

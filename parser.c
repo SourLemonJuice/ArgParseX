@@ -218,7 +218,6 @@ static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFl
             if (first_param == true) {
                 first_param = false;
             } else {
-                // if args has reached the end, but this flag still need more parameter, call the error
                 ShiftArguments_(data, 1);
                 param_start = data->args[data->arg_idx];
             }
@@ -299,7 +298,7 @@ static void IterationConfigs_(struct UnifiedData_ data[static 1])
     // some check
     if (conf_ptr == NULL)
         CallError_(data, kArgpxStatusUnknownFlag);
-    if (ShouldAssignerExist(data, g_ptr, conf_ptr))
+    if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
         CallError_(data, kArgpxStatusNoAssigner);
 
     // get flag parameters
