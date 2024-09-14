@@ -89,11 +89,11 @@ static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct Argpx
                                 struct ArgpxFlag conf_ptr[static 1])
 {
     switch (conf_ptr->method) {
-    case kMethodToggle:
+    case kArgpxMethodToggleBool:
         return false;
         break;
-    case kMethodMultipleVariable:
-    case kMethodSingleVariable:
+    case kArgpxMethodMultipleParam:
+    case kArgpxMethodSingleParam:
         if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_ASSIGNER) != 0)
             return true;
         return false;
@@ -109,7 +109,7 @@ static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct Argpx
 
     The "number" is similar to strncmp()'s "n"
  */
-static void StringNumberToVariable_(char *source_str, int number, enum parser_var_type type, void **ptr)
+static void StringNumberToVariable_(char *source_str, int number, enum ArgpxVarType type, void **ptr)
 {
     // prepare a separate string
     int str_len = strlen(source_str);
@@ -130,16 +130,16 @@ static void StringNumberToVariable_(char *source_str, int number, enum parser_va
     // if can, the value_str needs to free up
     // TODO implement other types
     switch (type) {
-    case kTypeString:
+    case kArgpxVarTypeString:
         *ptr = value_str;
         break;
-    case kTypeInteger:
+    case kArgpxVarTypeInt:
         break;
-    case kTypeBoolean:
+    case kArgpxVarTypeBool:
         break;
-    case kTypeFloat:
+    case kArgpxVarTypeFloat:
         break;
-    case kTypeDouble:
+    case kArgpxVarTypeDouble:
         break;
     }
 }
@@ -164,7 +164,7 @@ static void GetCommandParameter_(struct UnifiedData_ data[static 1])
  */
 static void GetFlagBoolToggle_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
-    bool *ptr = conf_ptr->toggle_ptr;
+    bool *ptr = conf_ptr->single_var_ptr;
     *ptr = not *ptr;
 }
 
@@ -276,6 +276,8 @@ static void IterationConfigs_(struct UnifiedData_ data[static 1])
         return;
     }
 
+    // TODO if groupable
+
     char *arg = data->args[data->arg_idx];
     char *assigner_ptr = strchr(arg, g_ptr->assigner); // if NULL no assigner
     char *name_start = arg + strlen(g_ptr->prefix);
@@ -303,13 +305,13 @@ static void IterationConfigs_(struct UnifiedData_ data[static 1])
 
     // get flag parameters
     switch (conf_ptr->method) {
-    case kMethodToggle:
+    case kArgpxMethodToggleBool:
         GetFlagBoolToggle_(data, conf_ptr);
         break;
-    case kMethodSingleVariable:
+    case kArgpxMethodSingleParam:
         // TODO
         break;
-    case kMethodMultipleVariable:
+    case kArgpxMethodMultipleParam:
         GetFlagMultiArgs_(data, conf_ptr, assigner_ptr);
         break;
     }

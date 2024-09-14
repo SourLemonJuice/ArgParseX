@@ -38,13 +38,13 @@ int main(int argc, char *argv[])
     struct ArgpxFlag ArgpxFlag[] = {
         {
             .group_idx = 0,
-            .method = kMethodMultipleVariable,
+            .method = kArgpxMethodMultipleParam,
             .name = "test",
             .var_count = 2,
             .var_types =
                 (ARG_PARSER_VAR_TYPE[]){
-                    kTypeString,
-                    kTypeString,
+                    kArgpxVarTypeString,
+                    kArgpxVarTypeString,
                 },
             .var_ptrs =
                 (void *[]){
@@ -55,19 +55,19 @@ int main(int argc, char *argv[])
         },
         {
             .group_idx = 0,
-            .method = kMethodToggle,
+            .method = kArgpxMethodToggleBool,
             .name = "toggle",
-            .toggle_ptr = &test_bool,
+            .single_var_ptr = &test_bool,
         },
         {
             .group_idx = 1,
-            .method = kMethodMultipleVariable,
+            .method = kArgpxMethodMultipleParam,
             .name = "test2",
             .var_count = 2,
             .var_types =
                 (ARG_PARSER_VAR_TYPE[]){
-                    kTypeString,
-                    kTypeString,
+                    kArgpxVarTypeString,
+                    kArgpxVarTypeString,
                 },
             .var_ptrs =
                 (void *[]){
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
     printf("test_str group 0: %s, %s\n", test_str1, test_str2);
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);
-    printf("--toggle: ");
+    printf("--toggle: false -> ");
     if (test_bool == true) {
         printf("true\n");
     } else {

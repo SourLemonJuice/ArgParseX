@@ -13,21 +13,20 @@ enum ArgpxStatus {
 };
 
 // TODO not implemented all
-// TODO naming
-enum parser_var_method {
-    kMethodToggle,
-    kMethodSingleVariable, // TODO
-    kMethodMultipleVariable,
-    // TODO set bool
+enum ArgpxVarMethod {
+    kArgpxMethodToggleBool,
+    kArgpxMethodSetVar, // TODO
+    kArgpxMethodSingleParam, // TODO
+    kArgpxMethodMultipleParam,
 };
 
-enum parser_var_type {
-    kTypeString,
+enum ArgpxVarType {
+    kArgpxVarTypeString,
     // TODO
-    kTypeInteger,
-    kTypeBoolean,
-    kTypeFloat,
-    kTypeDouble,
+    kArgpxVarTypeInt,
+    kArgpxVarTypeBool,
+    kArgpxVarTypeFloat,
+    kArgpxVarTypeDouble,
 };
 
 // flag's range is uint16_t
@@ -35,7 +34,6 @@ enum parser_var_type {
 #define ARGPX_GROUP_MANDATORY_DELIMITER 0b1 << 1
 #define ARGPX_GROUP_FLAG_GROUPABLE 0b1 << 2
 
-// set separator to '\0' to skip them
 struct ArgpxFlagGroup {
     uint16_t flag;
     // prefix of flag, like the "--" of "--flag"
@@ -46,21 +44,20 @@ struct ArgpxFlagGroup {
     char delimiter;
 };
 
-// TODO change structure name
-// in library source it is called "conf"
+// in library source code it is called "conf/config"
 struct ArgpxFlag {
     // It's an index not an id.
     // emm... I trust the programer can figure out the array index in their hands.
     // then there is no need for a new hash table here
     int group_idx;
-    enum parser_var_method method;
+    enum ArgpxVarMethod method;
     // name of flag, like the "flagName" of "--flagName"
     char *name;
-    // only "toggle" method use it, made that's simple
-    bool *toggle_ptr;
+    // "toggle bool", "single variable" method use it, made that's simple
+    void *single_var_ptr;
     // the count of "var_types" and "var_ptrs"
     int var_count;
-    enum parser_var_type *var_types;
+    enum ArgpxVarType *var_types;
     // a list of secondary pointer of actual variable
     void **var_ptrs;
 };
@@ -74,7 +71,7 @@ struct ArgpxResult {
 
 // TODO TBD
 // give user a macro but not enum's name?
-#define ARG_PARSER_VAR_TYPE enum parser_var_type
+#define ARG_PARSER_VAR_TYPE enum ArgpxVarType
 
 struct ArgpxResult *ArgParser(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
                               struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));
