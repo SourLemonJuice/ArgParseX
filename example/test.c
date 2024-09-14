@@ -4,7 +4,7 @@
 
 #include "parser.h"
 
-static void Error_(struct parser_result *result)
+static void Error_(struct ArgpxResult *result)
 {
     printf("Error, parser status: %d\n", result->status);
     exit(EXIT_FAILURE);
@@ -20,9 +20,9 @@ int main(int argc, char *argv[])
     char *test_str22 = NULL;
     bool test_bool = false;
 
-    struct flag_group group[] = {
+    struct ArgpxFlagGroup group[] = {
         {
-            .flag = ARG_GROUP_MANDATORY_ASSIGNER | ARG_GROUP_MANDATORY_DELIMITER,
+            .flag = ARGPX_GROUP_MANDATORY_ASSIGNER | ARGPX_GROUP_MANDATORY_DELIMITER,
             .prefix = "--",
             .assigner = '=',
             .delimiter = ',',
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
         },
     };
 
-    struct parser parser[] = {
+    struct ArgpxFlag ArgpxFlag[] = {
         {
             .group_idx = 0,
             .method = kMethodMultipleVariable,
@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
         },
     };
 
-    struct parser_result *res = ArgParser(argc, 0, argv, group, parser, sizeof(parser) / sizeof(struct parser), Error_);
+    struct ArgpxResult *res = ArgParser(argc, 0, argv, group, sizeof(group) / sizeof(struct ArgpxFlagGroup), ArgpxFlag,
+                                        sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag), Error_);
 
     printf("test_str group 0: %s, %s\n", test_str1, test_str2);
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);

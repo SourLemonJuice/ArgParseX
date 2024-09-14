@@ -3,14 +3,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum parser_status {
-    kArgParserSuccess,
-    kArgParserUnknownError,
-    kArgParserShiftingArg,
-    kArgParserFlagParamFormatIncorrect,
+enum ArgpxStatus {
+    kArgpxStatusSuccess,
+    kArgpxStatusFailure,
+    kArgpxStatusShiftingArg,
+    kArgpxStatusNoAssigner,
+    kArgpxStatusFlagParamFormatIncorrect,
+    kArgpxStatusUnknownFlag,
 };
 
 // TODO not implemented all
+// TODO naming
 enum parser_var_method {
     kMethodToggle,
     kMethodSingleVariable, // TODO
@@ -28,36 +31,42 @@ enum parser_var_type {
 };
 
 // flag's range is uint16_t
-#define ARG_GROUP_MANDATORY_ASSIGNER 0b1
-#define ARG_GROUP_MANDATORY_DELIMITER 0b1 << 1
+#define ARGPX_GROUP_MANDATORY_ASSIGNER 0b1 << 0
+#define ARGPX_GROUP_MANDATORY_DELIMITER 0b1 << 1
+#define ARGPX_GROUP_FLAG_GROUPABLE 0b1 << 2
 
 // set separator to '\0' to skip them
-struct flag_group {
+struct ArgpxFlagGroup {
     uint16_t flag;
     // prefix of flag, like the "--" of "--flag"
     char *prefix;
-    // parameter assigner
+    // parameter assignment symbol
     char assigner;
     // parameter delimiter
     char delimiter;
 };
 
 // TODO change structure name
-struct parser {
+// in library source it is called "conf"
+struct ArgpxFlag {
+    // It's an index not an id.
+    // emm... I trust the programer can figure out the array index in their hands.
+    // then there is no need for a new hash table here
     int group_idx;
     enum parser_var_method method;
     // name of flag, like the "flagName" of "--flagName"
     char *name;
     // only "toggle" method use it, made that's simple
     bool *toggle_ptr;
+    // the count of "var_types" and "var_ptrs"
     int var_count;
     enum parser_var_type *var_types;
     // a list of secondary pointer of actual variable
     void **var_ptrs;
 };
 
-struct parser_result {
-    enum parser_status status;
+struct ArgpxResult {
+    enum ArgpxStatus status;
     int parsed_argc_index; // Pointer to the last parsed argument
     int params_count;      // Parameters is non-flag argument
     char **parameters;
@@ -67,5 +76,5 @@ struct parser_result {
 // give user a macro but not enum's name?
 #define ARG_PARSER_VAR_TYPE enum parser_var_type
 
-struct parser_result *ArgParser(int argc, int last_arg, char *argv[], struct flag_group *groups, struct parser *opts,
-                                int opt_count, void (*ErrorCallback)(struct parser_result *));
+struct ArgpxResult *ArgParser(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
+                              struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));

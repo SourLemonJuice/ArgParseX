@@ -6,6 +6,12 @@
 Comprehensive and configurable command line arguments parser library.\
 Written for C language
 
+## Namespace
+
+Those look like `ArgPX_Name`/`argpx_name`/`ArgpxName`/`ARGPX_`
+
+Hope it won't be changed
+
 ## See also
 
 - [命令行界面程序的各种参数设计模式与风格 | SourLemonJuice-blog](https://sourlemonjuice.github.io/SourLemonJuice-blog/posts2/2024/09/command-line-style)
