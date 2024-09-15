@@ -6,11 +6,9 @@
 Comprehensive and configurable command line arguments parser library.\
 Written for C language
 
-## Namespace
+## Documents
 
-Those look like `ArgPX_Name`/`argpx_name`/`ArgpxName`/`ARGPX_`/`ARG_PARSE_X_`
-
-Hope it won't be changed
+At here: [docs/](./docs/)
 
 ## See also
 
