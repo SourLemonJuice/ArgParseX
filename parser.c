@@ -368,36 +368,58 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
 {
     char *arg = data->args[data->arg_idx];
     char *assigner_ptr = strchr(arg, g_ptr->assigner); // if NULL no assigner
-    char *name_start = arg + strlen(g_ptr->prefix);
-    int prev_name_len = 0;
-    int remaining_len;
-    if (assigner_ptr != NULL)
-        remaining_len = assigner_ptr - name_start;
+    int assigner_len;
+    if (g_ptr->assigner != '\0')
+        assigner_len = 1;
     else
-        remaining_len = strlen(name_start);
+        assigner_len = 0;
+
+    // for loop
+    char *name_start_ptr;
+    int name_len;
+    int prev_name_len;
+    int remaining_len;
+    char *param_start_ptr;
+
+    // init loop
+    name_start_ptr = arg + strlen(g_ptr->prefix);
+    prev_name_len = 0;
+    if (assigner_ptr != NULL)
+        remaining_len = assigner_ptr - name_start_ptr;
+    else
+        remaining_len = strlen(name_start_ptr);
 
     while (true) {
-        name_start += prev_name_len;
+        name_start_ptr += prev_name_len;
         remaining_len -= prev_name_len;
         if (remaining_len <= 0)
             break;
 
-        struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start, 0);
+        struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start_ptr, 0);
         if (conf_ptr == NULL)
             CallError_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
             CallError_(data, kArgpxStatusNoAssigner);
+        name_len = strlen(conf_ptr->name);
+
+        param_start_ptr = name_start_ptr + name_len;
+        if (assigner_ptr != NULL)
+            param_start_ptr += assigner_len;
 
         switch (conf_ptr->method) {
         case kArgpxMethodMultipleParam:
-            GetFlagMultiArgs_(data, conf_ptr, name_start + remaining_len + 1);
+            GetFlagMultiArgs_(data, conf_ptr, param_start_ptr);
+            // C can't break that's while(true) on there, but return this function is also works
+            return;
+            break;
+        case kArgpxMethodSetBool:
             break;
         default:
             CallError_(data, kArgpxStatusMethodAvailabilityError);
             break;
         }
 
-        prev_name_len = strlen(conf_ptr->name);
+        prev_name_len = name_len;
     }
 }
 
