@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 enum ArgpxStatus {
     kArgpxStatusSuccess,
@@ -11,15 +12,16 @@ enum ArgpxStatus {
     kArgpxStatusNoAssigner,
     kArgpxStatusFlagParamFormatIncorrect,
     kArgpxStatusUnknownFlag,
-    kArgpxStatusMethodAvailabilityError,
+    kArgpxStatusActionAvailabilityError,
 };
 
-// TODO not implemented all
-enum ArgpxVarMethod {
-    kArgpxMethodToggleBool,
-    kArgpxMethodSetVar, // TODO
-    kArgpxMethodSingleParam, // TODO
-    kArgpxMethodMultipleParam,
+enum ArgpxActionType {
+    kArgpxActionParamMulti,
+    kArgpxActionParamSingle, // TODO
+    kArgpxActionParamList,   // TODO
+    kArgpxActionSetMemory,   // TODO
+    kArgpxActionSetBool,
+    kArgpxActionSetInt,      // TODO
 };
 
 enum ArgpxVarType {
@@ -47,29 +49,75 @@ struct ArgpxFlagGroup {
     char delimiter;
 };
 
+/*
+    Convert a string in flag's parameter
+ */
+struct ArgpxParamUnit {
+    enum ArgpxVarType type;
+    // a list of secondary pointer of actual variable
+    void *ptr;
+};
+
+/*
+    If need some custom structure or the other data type
+ */
+struct ArgpxHidden_OutcomeSetMemory {
+    size_t size;
+    void *source_ptr;
+    void *target_ptr;
+};
+
+/*
+    The most common operation on the command line
+ */
+struct ArgpxHidden_OutcomeSetBool {
+    bool source;
+    bool *target_ptr;
+};
+
+/*
+    Maybe enum need it
+ */
+struct ArgpxHidden_OutcomeSetInt {
+    uintmax_t source;
+    uintmax_t *target_ptr;
+};
+
+struct ArgpxHidden_OutcomeGetMultiParamArray {
+    int count;
+    struct ArgpxParamUnit *format_units;
+};
+
+struct ArgpxHidden_OutcomeActionList {
+    union {
+        struct ArgpxParamUnit param_single;
+        struct ArgpxHidden_OutcomeGetMultiParamArray param_multi;
+        struct ArgpxHidden_OutcomeSetMemory set_memory;
+        struct ArgpxHidden_OutcomeSetBool set_bool;
+        struct ArgpxHidden_OutcomeSetInt set_int;
+    };
+};
+
 // in library source code it is called "conf/config"
 struct ArgpxFlag {
     // It's an index not an id.
     // emm... I trust the programer can figure out the array index in their hands.
     // then there is no need for a new hash table here
     int group_idx;
-    enum ArgpxVarMethod method;
     // name of flag, like the "flagName" of "--flagName"
     char *name;
-    // "toggle bool", "single variable" method use it, made that's simple
-    void *single_var_ptr;
-    // the count of "var_types" and "var_ptrs"
-    int var_count;
-    enum ArgpxVarType *var_types;
-    // a list of secondary pointer of actual variable
-    void **var_ptrs;
+    // one flag only have one action, but one action may need to define mutiple structures.
+    enum ArgpxActionType action_type;
+    struct ArgpxHidden_OutcomeActionList action_load;
 };
 
 struct ArgpxResult {
     enum ArgpxStatus status;
-    int parsed_argc_index; // Pointer to the last parsed argument
-    int params_count;      // Parameters is non-flag argument
-    char **parameters;
+    int parsed_argv_index; // pointer index to the last parsed argument
+    int params_count;      // parameter here is non-flag command "argument"
+    char **params;         // an array of command parameters
+    int argc;
+    char **argv;
 };
 
 // TODO TBD
@@ -77,7 +125,7 @@ struct ArgpxResult {
 #define ARG_PARSER_VAR_TYPE enum ArgpxVarType
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
-struct ArgpxResult *ArgParser(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
+struct ArgpxResult *ArgpxMain(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
                               struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));
 
 #endif

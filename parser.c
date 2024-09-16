@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <iso646.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -66,10 +67,10 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Flag parameter format incorrect";
         break;
     case kArgpxStatusUnknownFlag:
-        return "Unknown flag but the group matched";
+        return "Unknown flag but the flag group matched(by prefix)";
         break;
-    case kArgpxStatusMethodAvailabilityError:
-        return "Method availability error. Maybe that's not available in the current setup";
+    case kArgpxStatusActionAvailabilityError:
+        return "Flag action availability error. Maybe that's not available in the current setup";
         break;
     }
 
@@ -120,17 +121,17 @@ static struct ArgpxFlagGroup *GroupIndexToPointer_(struct UnifiedData_ data[stat
 static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1],
                                 struct ArgpxFlag conf_ptr[static 1])
 {
-    switch (conf_ptr->method) {
-    case kArgpxMethodToggleBool:
+    switch (conf_ptr->action_type) {
+    case kArgpxActionSetBool:
         return false;
         break;
-    case kArgpxMethodMultipleParam:
+    case kArgpxActionParamMulti:
         if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_ASSIGNER) != 0)
             return true;
         return false;
         break;
     default:
-        CallError_(data, kArgpxStatusMethodAvailabilityError);
+        CallError_(data, kArgpxStatusActionAvailabilityError);
         break;
     }
 
@@ -189,26 +190,27 @@ static void GetCommandParameter_(struct UnifiedData_ data[static 1])
     res->params_count += 1;
     size_t this_arg_size = strlen(arg) + 1;
 
-    res->parameters = realloc(res->parameters, sizeof(char * [res->params_count]));
-    res->parameters[res->params_count - 1] = arg;
+    res->params = realloc(res->params, sizeof(char * [res->params_count]));
+    res->params[res->params_count - 1] = arg;
 }
 
 /*
     Invert the bool value of "toggle_ptr" in flag config
  */
-static void GetFlagBoolToggle_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
-    bool *ptr = conf_ptr->single_var_ptr;
-    *ptr = not *ptr;
+    struct ArgpxHidden_OutcomeSetBool *ptr = &conf_ptr->action_load.set_bool;
+    *ptr->target_ptr = ptr->source;
 }
 
 /*
     If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
  */
-static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
+static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
                               char *param_start_ptr)
 {
     struct ArgpxFlagGroup *group_ptr = &data->groups[conf_ptr->group_idx];
+    struct ArgpxHidden_OutcomeGetMultiParamArray *action_ptr = &conf_ptr->action_load.param_multi;
     char delim = group_ptr->delimiter;
     char *param_start;
     int param_len;
@@ -229,7 +231,7 @@ static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFl
         kPartitionByDelimiter,
     } partition_type = kPartitionNotSet;
 
-    for (int var_idx = 0; var_idx < conf_ptr->var_count; var_idx++) {
+    for (int var_idx = 0; var_idx < action_ptr->count; var_idx++) {
         // fix the parameter get type
         if (partition_type == kPartitionNotSet) {
             next_delim_ptr = strchr(param_start, delim);
@@ -265,7 +267,7 @@ static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFl
             next_delim_ptr = strchr(param_start, delim);
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
-                if (var_idx + 1 < conf_ptr->var_count) {
+                if (var_idx + 1 < action_ptr->count) {
                     CallError_(data, kArgpxStatusFlagParamFormatIncorrect);
                 }
                 param_len = strlen(param_start);
@@ -276,15 +278,17 @@ static void GetFlagMultiArgs_(struct UnifiedData_ data[static 1], struct ArgpxFl
         }
 
         // i know it's confusing...
-        StringNumberToVariable_(param_start, param_len, conf_ptr->var_types[var_idx],
-                                conf_ptr->var_ptrs[var_idx] /* passing secondary pointer */);
+        StringNumberToVariable_(param_start, param_len, action_ptr->format_units[var_idx].type,
+                                action_ptr->format_units[var_idx].ptr /* passing secondary pointer */);
     }
 }
 
 /*
     Detect the group where the argument is located.
     A group index will be returned. Use GroupIndexToPointer_() convert it to a pointer.
-    Return negative int: no group matched
+    return:
+      - INT_MIN: no group matched
+      - other integer: give it to GroupIndexToPointer_() it will give back the group pointer
  */
 static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 {
@@ -298,7 +302,7 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
             return g_idx;
     }
 
-    return -1;
+    return INT_MIN;
 }
 
 /*
@@ -350,15 +354,15 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
         CallError_(data, kArgpxStatusNoAssigner);
 
     // get flag parameters
-    switch (conf_ptr->method) {
-    case kArgpxMethodToggleBool:
-        GetFlagBoolToggle_(data, conf_ptr);
+    switch (conf_ptr->action_type) {
+    case kArgpxActionSetBool:
+        ActionSetBool_(data, conf_ptr);
         break;
-    case kArgpxMethodMultipleParam:
-        GetFlagMultiArgs_(data, conf_ptr, assigner_ptr + 1);
+    case kArgpxActionParamMulti:
+        ActionParamMulti_(data, conf_ptr, assigner_ptr + 1);
         break;
     default:
-        CallError_(data, kArgpxStatusMethodAvailabilityError);
+        CallError_(data, kArgpxStatusActionAvailabilityError);
         break;
     }
 }
@@ -406,16 +410,17 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
         if (assigner_ptr != NULL)
             param_start_ptr += assigner_len;
 
-        switch (conf_ptr->method) {
-        case kArgpxMethodMultipleParam:
-            GetFlagMultiArgs_(data, conf_ptr, param_start_ptr);
+        switch (conf_ptr->action_type) {
+        case kArgpxActionParamMulti:
+            ActionParamMulti_(data, conf_ptr, param_start_ptr);
             // C can't break that's while(true) on there, but return this function is also works
             return;
             break;
-        case kArgpxMethodSetBool:
+        case kArgpxActionSetBool:
+            return;
             break;
         default:
-            CallError_(data, kArgpxStatusMethodAvailabilityError);
+            CallError_(data, kArgpxStatusActionAvailabilityError);
             break;
         }
 
@@ -429,11 +434,11 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
 
     TODO I don't like this parameter style
  */
-struct ArgpxResult *ArgParser(int argc, int arg_base, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
+struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
                               struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *))
 {
     struct UnifiedData_ data = {
-        .res = malloc(sizeof(struct ArgpxResult)),
+        .res = &(struct ArgpxResult){.argc = argc, .argv = argv},
         .ErrorCallback = ErrorCallback,
         .arg_c = argc,
         .args = argv,
@@ -444,10 +449,11 @@ struct ArgpxResult *ArgParser(int argc, int arg_base, char *argv[], struct Argpx
         .confs = opts,
     };
 
+    // all the arg index updated here, this may not be very good?
     for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
         int g_idx = DetectGroupIndex_(&data);
         struct ArgpxFlagGroup *g_ptr = GroupIndexToPointer_(&data, g_idx);
-        if (g_ptr == NULL) {
+        if (g_idx == INT_MIN and g_ptr == NULL) {
             GetCommandParameter_(&data);
             continue;
         }
@@ -459,7 +465,7 @@ struct ArgpxResult *ArgParser(int argc, int arg_base, char *argv[], struct Argpx
     }
 
     // last_arg is equal to argc now, but here need a valid index
-    data.res->parsed_argc_index = data.arg_idx - 1;
+    data.res->parsed_argv_index = data.arg_idx - 1;
 
     // TODO find a way to free those malloc()
     return data.res;

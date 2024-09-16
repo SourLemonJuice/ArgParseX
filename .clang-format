@@ -32,7 +32,7 @@ BinPackParameters: true # Microsoft has set this, but I also saw this config.
 AlignAfterOpenBracket: Align # TBD, now same as Microsoft.
 AlignTrailingComments:
     Kind: Always
-    OverEmptyLines: 0
+    OverEmptyLines: 1
 AlignOperands: AlignAfterOperator
 AlignEscapedNewlines: DontAlign
 ...
