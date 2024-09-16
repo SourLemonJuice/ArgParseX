@@ -35,7 +35,7 @@ struct UnifiedData_ {
 /*
     Call the error callback registered by the user
  */
-static void CallError_(struct UnifiedData_ data[static 1], enum ArgpxStatus status)
+static void Exit_(struct UnifiedData_ data[static 1], enum ArgpxStatus status)
 {
     data->res->status = status;
 
@@ -80,6 +80,8 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
 /*
     Check if the arg has reached the boundary.
     idx_offset will be added to data->arg_idx. This may save something?
+
+    TODO Is this function really necessary?
  */
 static bool ArgIndexWithinBoundary_(struct UnifiedData_ data[static 1], int idx_offset)
 {
@@ -95,16 +97,21 @@ static bool ArgIndexWithinBoundary_(struct UnifiedData_ data[static 1], int idx_
 static void ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
     if (ArgIndexWithinBoundary_(data, offset) == false)
-        CallError_(data, kArgpxStatusShiftingArg);
+        Exit_(data, kArgpxStatusShiftingArg);
     data->arg_idx += offset;
 }
 
 /*
     Convert group index to pointer.
     Some special index(negative number) will be resolved to built-in group
+
+    return NULL is non-flag argument
  */
 static struct ArgpxFlagGroup *GroupIndexToPointer_(struct UnifiedData_ data[static 1], int index)
 {
+    if (index == INT_MIN)
+        return NULL;
+
     struct ArgpxFlagGroup *result = NULL;
     if (index >= 0) {
         result = &data->groups[index];
@@ -131,7 +138,7 @@ static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct Argpx
         return false;
         break;
     default:
-        CallError_(data, kArgpxStatusActionAvailabilityError);
+        Exit_(data, kArgpxStatusActionAvailabilityError);
         break;
     }
 
@@ -182,7 +189,7 @@ static void StringNumberToVariable_(char *source_str, int number, enum ArgpxVarT
 /*
     Copy the current argument to result data structure as a command parameter
  */
-static void GetCommandParameter_(struct UnifiedData_ data[static 1])
+static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
 {
     char *arg = data->args[data->arg_idx];
     struct ArgpxResult *res = data->res;
@@ -237,7 +244,7 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
             next_delim_ptr = strchr(param_start, delim);
             if (next_delim_ptr == NULL) {
                 if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_DELIMITER) != 0)
-                    CallError_(data, kArgpxStatusFlagParamFormatIncorrect);
+                    Exit_(data, kArgpxStatusFlagParamFormatIncorrect);
                 partition_type = kPartitionByArguments;
             } else {
                 partition_type = kPartitionByDelimiter;
@@ -247,7 +254,7 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
         switch (partition_type) {
         case kPartitionNotSet:
             // never impossible to enter. just make compiler don't take warning
-            CallError_(data, kArgpxStatusFailure);
+            Exit_(data, kArgpxStatusFailure);
             break;
         case kPartitionByArguments:
             if (first_param == true) {
@@ -268,7 +275,7 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
                 if (var_idx + 1 < action_ptr->count) {
-                    CallError_(data, kArgpxStatusFlagParamFormatIncorrect);
+                    Exit_(data, kArgpxStatusFlagParamFormatIncorrect);
                 }
                 param_len = strlen(param_start);
             } else {
@@ -278,8 +285,8 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
         }
 
         // i know it's confusing...
-        StringNumberToVariable_(param_start, param_len, action_ptr->format_units[var_idx].type,
-                                action_ptr->format_units[var_idx].ptr /* passing secondary pointer */);
+        StringNumberToVariable_(param_start, param_len, action_ptr->units[var_idx].type,
+                                action_ptr->units[var_idx].ptr /* passing secondary pointer */);
     }
 }
 
@@ -349,9 +356,9 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
 
     // some check
     if (conf_ptr == NULL)
-        CallError_(data, kArgpxStatusUnknownFlag);
+        Exit_(data, kArgpxStatusUnknownFlag);
     if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-        CallError_(data, kArgpxStatusNoAssigner);
+        Exit_(data, kArgpxStatusNoAssigner);
 
     // get flag parameters
     switch (conf_ptr->action_type) {
@@ -362,7 +369,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
         ActionParamMulti_(data, conf_ptr, assigner_ptr + 1);
         break;
     default:
-        CallError_(data, kArgpxStatusActionAvailabilityError);
+        Exit_(data, kArgpxStatusActionAvailabilityError);
         break;
     }
 }
@@ -401,9 +408,9 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
 
         struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start_ptr, 0);
         if (conf_ptr == NULL)
-            CallError_(data, kArgpxStatusUnknownFlag);
+            Exit_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-            CallError_(data, kArgpxStatusNoAssigner);
+            Exit_(data, kArgpxStatusNoAssigner);
         name_len = strlen(conf_ptr->name);
 
         param_start_ptr = name_start_ptr + name_len;
@@ -420,7 +427,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
             return;
             break;
         default:
-            CallError_(data, kArgpxStatusActionAvailabilityError);
+            Exit_(data, kArgpxStatusActionAvailabilityError);
             break;
         }
 
@@ -438,7 +445,7 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
                               struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *))
 {
     struct UnifiedData_ data = {
-        .res = &(struct ArgpxResult){.argc = argc, .argv = argv},
+        .res = &(struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = argc, .argv = argv},
         .ErrorCallback = ErrorCallback,
         .arg_c = argc,
         .args = argv,
@@ -449,12 +456,15 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
         .confs = opts,
     };
 
-    // all the arg index updated here, this may not be very good?
-    for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
+    for (int i = 0; i < data.arg_c; i++) {
+        // update index record
+        data.arg_idx = i;
+        data.res->current_argv_idx = data.arg_idx;
+
         int g_idx = DetectGroupIndex_(&data);
         struct ArgpxFlagGroup *g_ptr = GroupIndexToPointer_(&data, g_idx);
-        if (g_idx == INT_MIN and g_ptr == NULL) {
-            GetCommandParameter_(&data);
+        if (g_ptr == NULL) {
+            AppendCommandParameter_(&data);
             continue;
         }
 
@@ -463,9 +473,6 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
         else
             ParseArgumentIndependent_(&data, g_idx, g_ptr);
     }
-
-    // last_arg is equal to argc now, but here need a valid index
-    data.res->parsed_argv_index = data.arg_idx - 1;
 
     // TODO find a way to free those malloc()
     return data.res;

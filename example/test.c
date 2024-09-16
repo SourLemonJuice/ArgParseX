@@ -8,7 +8,7 @@ static void Error_(struct ArgpxResult *res)
 {
     printf("Error, parser status: %d\n", res->status);
     printf("Status to string: %s\n", ArgpxStatusToString(res->status));
-    printf("Problematic argument(index %d): %s\n", res->parsed_argv_index, res->argv[res->parsed_argv_index]);
+    printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->argv[res->current_argv_idx]);
     exit(EXIT_FAILURE);
 
     return;
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
             .name = "test",
             .action_type = kArgpxActionParamMulti,
             .action_load.param_multi.count = 2,
-            .action_load.param_multi.format_units =
+            .action_load.param_multi.units =
                 (struct ArgpxParamUnit[]){
                     {.type = kArgpxVarTypeString, .ptr = &test_str1},
                     {.type = kArgpxVarTypeString, .ptr = &test_str2},
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
             .name = "test2",
             .action_type = kArgpxActionParamMulti,
             .action_load.param_multi.count = 2,
-            .action_load.param_multi.format_units =
+            .action_load.param_multi.units =
                 (struct ArgpxParamUnit[]){
                     {.type = kArgpxVarTypeString, .ptr = &test_str21},
                     {.type = kArgpxVarTypeString, .ptr = &test_str22},

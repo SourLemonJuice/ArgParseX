@@ -85,7 +85,8 @@ struct ArgpxHidden_OutcomeSetInt {
 
 struct ArgpxHidden_OutcomeGetMultiParamArray {
     int count;
-    struct ArgpxParamUnit *format_units;
+    // format units array
+    struct ArgpxParamUnit *units;
 };
 
 struct ArgpxHidden_OutcomeActionList {
@@ -113,9 +114,9 @@ struct ArgpxFlag {
 
 struct ArgpxResult {
     enum ArgpxStatus status;
-    int parsed_argv_index; // pointer index to the last parsed argument
-    int params_count;      // parameter here is non-flag command "argument"
-    char **params;         // an array of command parameters
+    int current_argv_idx; // index to the last parsed argument, maybe finished maybe wrong
+    int params_count;     // parameter here is non-flag command "argument"
+    char **params;        // an array of command parameters
     int argc;
     char **argv;
 };
