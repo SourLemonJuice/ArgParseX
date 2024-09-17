@@ -92,13 +92,16 @@ static bool ArgIndexWithinBoundary_(struct UnifiedData_ data[static 1], int idx_
 }
 
 /*
-    Safe shift arguments
+    Using the offset shift arguments, it will be safe.
+    Return a pointer to the new argument
  */
-static void ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
+static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
     if (ArgIndexWithinBoundary_(data, offset) == false)
         ArgpxExit_(data, kArgpxStatusShiftingArg);
     data->arg_idx += offset;
+
+    return data->args[data->arg_idx];
 }
 
 /*
@@ -243,12 +246,10 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
         break;
     }
 
-    if (param_start_ptr != NULL) {
+    if (param_start_ptr != NULL)
         param_start = param_start_ptr;
-    } else {
-        ShiftArguments_(data, 1);
-        param_start = data->args[data->arg_idx];
-    }
+    else
+        param_start = ShiftArguments_(data, 1);
 
     enum {
         kPartitionNotSet,
@@ -275,12 +276,11 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             ArgpxExit_(data, kArgpxStatusFailure);
             break;
         case kPartitionByArguments:
-            if (first_param == true) {
+            if (first_param == true)
                 first_param = false;
-            } else {
-                ShiftArguments_(data, 1);
-                param_start = data->args[data->arg_idx];
-            }
+            else
+                param_start = ShiftArguments_(data, 1);
+
             param_len = strlen(param_start);
             break;
         case kPartitionByDelimiter:
@@ -408,21 +408,24 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
     char *name_start_ptr;
     int name_len;
     int prev_name_len;
-    int remaining_len;
+    // how much length is available, including the current name in loop.
+    // maybe it's a bad name
+    int available_len;
     char *param_start_ptr;
 
     // init loop
     name_start_ptr = arg + strlen(g_ptr->prefix);
     prev_name_len = 0;
     if (assigner_ptr != NULL)
-        remaining_len = assigner_ptr - name_start_ptr;
+        available_len = assigner_ptr - name_start_ptr;
     else
-        remaining_len = strlen(name_start_ptr);
+        available_len = strlen(name_start_ptr);
 
     while (true) {
         name_start_ptr += prev_name_len;
-        remaining_len -= prev_name_len;
-        if (remaining_len <= 0)
+        available_len -= prev_name_len;
+        // if there are no chars to parse, processing ends
+        if (available_len <= 0)
             break;
 
         struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start_ptr, 0);
@@ -432,9 +435,15 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
             ArgpxExit_(data, kArgpxStatusNoAssigner);
         name_len = strlen(conf_ptr->name);
 
-        param_start_ptr = name_start_ptr + name_len;
-        if (assigner_ptr != NULL)
-            param_start_ptr += assigner_len;
+        // get parameter start pointer
+        // the assigner is the most decisive
+        if (available_len == name_len and assigner_ptr == NULL) {
+            param_start_ptr = ShiftArguments_(data, 1);
+        } else {
+            param_start_ptr = name_start_ptr + name_len;
+            if (assigner_ptr != NULL)
+                param_start_ptr += assigner_len;
+        }
 
         switch (conf_ptr->action_type) {
         case kArgpxActionParamMulti:
@@ -477,9 +486,8 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
         .confs = opts,
     };
 
-    for (int i = 0; i < data.arg_c; i++) {
+    for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
         // update index record
-        data.arg_idx = i;
         data.res->current_argv_idx = data.arg_idx;
 
         int g_idx = DetectGroupIndex_(&data);
