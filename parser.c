@@ -57,20 +57,23 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     case kArgpxStatusFailure:
         return "Generic unknown error";
         break;
+    case kArgpxStatusActionUnavailable:
+        return "Flag action availability error. Maybe that's not available in the current setup";
+        break;
     case kArgpxStatusShiftingArg:
         return "An error occurred when shifting the argument";
-        break;
-    case kArgpxStatusNoAssigner:
-        return "No assignment symbol(.assigner)";
-        break;
-    case kArgpxStatusFlagParamFormatIncorrect:
-        return "Flag parameter format incorrect";
         break;
     case kArgpxStatusUnknownFlag:
         return "Unknown flag but the flag group matched(by prefix)";
         break;
-    case kArgpxStatusActionAvailabilityError:
-        return "Flag action availability error. Maybe that's not available in the current setup";
+    case kArgpxStatusMissingAssigner:
+        return "Missing assignment symbol(group.assigner)";
+        break;
+    case kArgpxStatusMissingDelimiter:
+        return "Missing delimiter symbol(group.delimiter)";
+        break;
+    case kArgpxStatusFlagParamDeficiency:
+        return "The flag gets insufficient parameters";
         break;
     }
 
@@ -142,7 +145,7 @@ static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct Argpx
         return false;
         break;
     default:
-        ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
+        ArgpxExit_(data, kArgpxStatusActionUnavailable);
         break;
     }
 
@@ -242,7 +245,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
         unit_ptr = &conf_ptr->action_load.param_single;
         break;
     default:
-        ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
+        ArgpxExit_(data, kArgpxStatusActionUnavailable);
         break;
     }
 
@@ -263,7 +266,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             next_delim_ptr = strchr(param_start, delim);
             if (next_delim_ptr == NULL) {
                 if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_DELIMITER) != 0)
-                    ArgpxExit_(data, kArgpxStatusFlagParamFormatIncorrect);
+                    ArgpxExit_(data, kArgpxStatusMissingDelimiter);
                 partition_type = kPartitionByArguments;
             } else {
                 partition_type = kPartitionByDelimiter;
@@ -293,7 +296,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
                 if (var_idx + 1 < param_count) {
-                    ArgpxExit_(data, kArgpxStatusFlagParamFormatIncorrect);
+                    ArgpxExit_(data, kArgpxStatusFlagParamDeficiency);
                 }
                 param_len = strlen(param_start);
             } else {
@@ -301,6 +304,9 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             }
             break;
         }
+
+        if (param_len == 0)
+            ArgpxExit_(data, kArgpxStatusFlagParamDeficiency);
 
         // i know it's confusing...
         StringNumberToVariable_(param_start, param_len, unit_ptr[var_idx].type,
@@ -376,7 +382,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
     if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-        ArgpxExit_(data, kArgpxStatusNoAssigner);
+        ArgpxExit_(data, kArgpxStatusMissingAssigner);
 
     // get flag parameters
     switch (conf_ptr->action_type) {
@@ -388,7 +394,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
         ActionParamAny_(data, conf_ptr, assigner_ptr + 1);
         break;
     default:
-        ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
+        ArgpxExit_(data, kArgpxStatusActionUnavailable);
         break;
     }
 }
@@ -432,7 +438,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
         if (conf_ptr == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-            ArgpxExit_(data, kArgpxStatusNoAssigner);
+            ArgpxExit_(data, kArgpxStatusMissingAssigner);
         name_len = strlen(conf_ptr->name);
 
         // get parameter start pointer
@@ -457,7 +463,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
             return;
             break;
         default:
-            ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
+            ArgpxExit_(data, kArgpxStatusActionUnavailable);
             break;
         }
 

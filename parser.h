@@ -6,13 +6,14 @@
 #include <stdlib.h>
 
 enum ArgpxStatus {
-    kArgpxStatusSuccess,
+    kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
+    kArgpxStatusActionUnavailable,
     kArgpxStatusShiftingArg,
-    kArgpxStatusNoAssigner,
-    kArgpxStatusFlagParamFormatIncorrect,
     kArgpxStatusUnknownFlag,
-    kArgpxStatusActionAvailabilityError,
+    kArgpxStatusMissingAssigner,
+    kArgpxStatusMissingDelimiter,
+    kArgpxStatusFlagParamDeficiency,
 };
 
 enum ArgpxActionType {
