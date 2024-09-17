@@ -35,7 +35,7 @@ struct UnifiedData_ {
 /*
     Call the error callback registered by the user
  */
-static void Exit_(struct UnifiedData_ data[static 1], enum ArgpxStatus status)
+static void ArgpxExit_(struct UnifiedData_ data[static 1], enum ArgpxStatus status)
 {
     data->res->status = status;
 
@@ -97,7 +97,7 @@ static bool ArgIndexWithinBoundary_(struct UnifiedData_ data[static 1], int idx_
 static void ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
     if (ArgIndexWithinBoundary_(data, offset) == false)
-        Exit_(data, kArgpxStatusShiftingArg);
+        ArgpxExit_(data, kArgpxStatusShiftingArg);
     data->arg_idx += offset;
 }
 
@@ -133,12 +133,13 @@ static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct Argpx
         return false;
         break;
     case kArgpxActionParamMulti:
+    case kArgpxActionParamSingle:
         if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_ASSIGNER) != 0)
             return true;
         return false;
         break;
     default:
-        Exit_(data, kArgpxStatusActionAvailabilityError);
+        ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
         break;
     }
 
@@ -213,18 +214,35 @@ static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag 
 /*
     If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
  */
-static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
-                              char *param_start_ptr)
+static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
+                            char *param_start_ptr)
 {
     struct ArgpxFlagGroup *group_ptr = &data->groups[conf_ptr->group_idx];
-    struct ArgpxHidden_OutcomeGetMultiParamArray *action_ptr = &conf_ptr->action_load.param_multi;
     char delim = group_ptr->delimiter;
+    int param_count;
+
+    // for loop
+    bool first_param = true;
     char *param_start;
     int param_len;
     char *next_delim_ptr;
-    bool first_param = true;
+    struct ArgpxParamUnit *unit_ptr;
 
     // init param_start
+    switch (conf_ptr->action_type) {
+    case kArgpxActionParamMulti:
+        param_count = conf_ptr->action_load.param_multi.count;
+        unit_ptr = conf_ptr->action_load.param_multi.units;
+        break;
+    case kArgpxActionParamSingle:
+        param_count = 1;
+        unit_ptr = &conf_ptr->action_load.param_single;
+        break;
+    default:
+        ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
+        break;
+    }
+
     if (param_start_ptr != NULL) {
         param_start = param_start_ptr;
     } else {
@@ -238,13 +256,13 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
         kPartitionByDelimiter,
     } partition_type = kPartitionNotSet;
 
-    for (int var_idx = 0; var_idx < action_ptr->count; var_idx++) {
-        // fix the parameter get type
+    for (int var_idx = 0; var_idx < param_count; var_idx++) {
+        // set the parameter get type
         if (partition_type == kPartitionNotSet) {
             next_delim_ptr = strchr(param_start, delim);
             if (next_delim_ptr == NULL) {
                 if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_DELIMITER) != 0)
-                    Exit_(data, kArgpxStatusFlagParamFormatIncorrect);
+                    ArgpxExit_(data, kArgpxStatusFlagParamFormatIncorrect);
                 partition_type = kPartitionByArguments;
             } else {
                 partition_type = kPartitionByDelimiter;
@@ -254,7 +272,7 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
         switch (partition_type) {
         case kPartitionNotSet:
             // never impossible to enter. just make compiler don't take warning
-            Exit_(data, kArgpxStatusFailure);
+            ArgpxExit_(data, kArgpxStatusFailure);
             break;
         case kPartitionByArguments:
             if (first_param == true) {
@@ -274,8 +292,8 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
             next_delim_ptr = strchr(param_start, delim);
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
-                if (var_idx + 1 < action_ptr->count) {
-                    Exit_(data, kArgpxStatusFlagParamFormatIncorrect);
+                if (var_idx + 1 < param_count) {
+                    ArgpxExit_(data, kArgpxStatusFlagParamFormatIncorrect);
                 }
                 param_len = strlen(param_start);
             } else {
@@ -285,8 +303,8 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct ArgpxFl
         }
 
         // i know it's confusing...
-        StringNumberToVariable_(param_start, param_len, action_ptr->units[var_idx].type,
-                                action_ptr->units[var_idx].ptr /* passing secondary pointer */);
+        StringNumberToVariable_(param_start, param_len, unit_ptr[var_idx].type,
+                                unit_ptr[var_idx].ptr /* passing secondary pointer */);
     }
 }
 
@@ -356,9 +374,9 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
 
     // some check
     if (conf_ptr == NULL)
-        Exit_(data, kArgpxStatusUnknownFlag);
+        ArgpxExit_(data, kArgpxStatusUnknownFlag);
     if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-        Exit_(data, kArgpxStatusNoAssigner);
+        ArgpxExit_(data, kArgpxStatusNoAssigner);
 
     // get flag parameters
     switch (conf_ptr->action_type) {
@@ -366,10 +384,11 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
         ActionSetBool_(data, conf_ptr);
         break;
     case kArgpxActionParamMulti:
-        ActionParamMulti_(data, conf_ptr, assigner_ptr + 1);
+    case kArgpxActionParamSingle:
+        ActionParamAny_(data, conf_ptr, assigner_ptr + 1);
         break;
     default:
-        Exit_(data, kArgpxStatusActionAvailabilityError);
+        ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
         break;
     }
 }
@@ -408,9 +427,9 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
 
         struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start_ptr, 0);
         if (conf_ptr == NULL)
-            Exit_(data, kArgpxStatusUnknownFlag);
+            ArgpxExit_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-            Exit_(data, kArgpxStatusNoAssigner);
+            ArgpxExit_(data, kArgpxStatusNoAssigner);
         name_len = strlen(conf_ptr->name);
 
         param_start_ptr = name_start_ptr + name_len;
@@ -419,15 +438,17 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
 
         switch (conf_ptr->action_type) {
         case kArgpxActionParamMulti:
-            ActionParamMulti_(data, conf_ptr, param_start_ptr);
+        case kArgpxActionParamSingle:
+            ActionParamAny_(data, conf_ptr, param_start_ptr);
             // C can't break that's while(true) on there, but return this function is also works
             return;
             break;
         case kArgpxActionSetBool:
+            ActionSetBool_(data, conf_ptr);
             return;
             break;
         default:
-            Exit_(data, kArgpxStatusActionAvailabilityError);
+            ArgpxExit_(data, kArgpxStatusActionAvailabilityError);
             break;
         }
 
