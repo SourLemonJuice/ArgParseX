@@ -495,6 +495,7 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
     for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
         // update index record
         data.res->current_argv_idx = data.arg_idx;
+        data.res->current_argv_ptr = data.args[data.arg_idx];
 
         int g_idx = DetectGroupIndex_(&data);
         struct ArgpxFlagGroup *g_ptr = GroupIndexToPointer_(&data, g_idx);

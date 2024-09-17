@@ -115,10 +115,17 @@ struct ArgpxFlag {
 
 struct ArgpxResult {
     enum ArgpxStatus status;
-    int current_argv_idx; // index to the last parsed argument, maybe finished maybe wrong
-    int params_count;     // parameter here is non-flag command "argument"
-    char **params;        // an array of command parameters
+    // index to the last parsed argument, processing maybe finished or maybe wrong
+    int current_argv_idx;
+    // pretty much the same as current_argv_idx, but it's directly useable string
+    char *current_argv_ptr;
+    // parameter here is non-flag command "argument"
+    int params_count;
+    // an array of command parameters
+    char **params;
+    // the command argc
     int argc;
+    // the command argv
     char **argv;
 };
 

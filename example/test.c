@@ -8,7 +8,7 @@ static void Error_(struct ArgpxResult *res)
 {
     printf("Error, parser status: %d\n", res->status);
     printf("Status to string: %s\n", ArgpxStatusToString(res->status));
-    printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->argv[res->current_argv_idx]);
+    printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->current_argv_ptr);
     exit(EXIT_FAILURE);
 
     return;
