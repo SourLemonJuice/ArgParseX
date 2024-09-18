@@ -99,13 +99,19 @@ int main(int argc, char *argv[])
     printf("test_str group 0: %s, %s\n", test_str1, test_str2);
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);
     printf("test_str group 1: %s\n", test_str31);
-    printf("--toggle: false -> ");
+    printf("--bool and -a: ");
 
-    if (test_bool == true) {
-        printf("true\n");
-    } else {
-        printf("false\n");
-    }
+    if (test_bool == true)
+        printf("true ");
+    else
+        printf("false ");
+
+    if (test_bool2 == true)
+        printf("true");
+    else
+        printf("false");
+
+    printf("\n");
 
     printf("==== command parameters ====\n");
     for (int i = 0; i < res->params_count; i++) {

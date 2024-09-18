@@ -441,26 +441,26 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
             ArgpxExit_(data, kArgpxStatusRequiredAssigner);
         name_len = strlen(conf_ptr->name);
 
-        // get parameter start pointer
-        // the assigner is the most decisive
-        if (available_len == name_len and assigner_ptr == NULL) {
-            param_start_ptr = ShiftArguments_(data, 1);
-        } else {
-            param_start_ptr = name_start_ptr + name_len;
-            if (assigner_ptr != NULL)
-                param_start_ptr += assigner_len;
-        }
-
         switch (conf_ptr->action_type) {
         case kArgpxActionParamMulti:
         case kArgpxActionParamSingle:
+            // get parameter start pointer
+            // the assigner is the most decisive
+            if (available_len == name_len and assigner_ptr == NULL) {
+                param_start_ptr = ShiftArguments_(data, 1);
+            } else {
+                param_start_ptr = name_start_ptr + name_len;
+                if (assigner_ptr != NULL)
+                    param_start_ptr += assigner_len;
+            }
+
             ActionParamAny_(data, conf_ptr, param_start_ptr);
+            // there is no need to continue the loop after this action
             // C can't break that's while(true) on there, but return this function is also works
             return;
             break;
         case kArgpxActionSetBool:
             ActionSetBool_(data, conf_ptr);
-            return;
             break;
         default:
             ArgpxExit_(data, kArgpxStatusActionUnavailable);
