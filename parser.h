@@ -11,8 +11,8 @@ enum ArgpxStatus {
     kArgpxStatusActionUnavailable,
     kArgpxStatusShiftingArg,
     kArgpxStatusUnknownFlag,
-    kArgpxStatusMissingAssigner,
-    kArgpxStatusMissingDelimiter,
+    kArgpxStatusRequiredAssigner,
+    kArgpxStatusRequiredDelimiter,
     kArgpxStatusFlagParamDeficiency,
 };
 

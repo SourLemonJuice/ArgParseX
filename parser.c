@@ -61,16 +61,16 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Flag action availability error. Maybe that's not available in the current setup";
         break;
     case kArgpxStatusShiftingArg:
-        return "An error occurred when shifting the argument";
+        return "There are no more arguments to get";
         break;
     case kArgpxStatusUnknownFlag:
         return "Unknown flag but the flag group matched(by prefix)";
         break;
-    case kArgpxStatusMissingAssigner:
-        return "Missing assignment symbol(group.assigner)";
+    case kArgpxStatusRequiredAssigner:
+        return "Assignment symbol(assigner) is not detected, but flag group set it to be mandatory";
         break;
-    case kArgpxStatusMissingDelimiter:
-        return "Missing delimiter symbol(group.delimiter)";
+    case kArgpxStatusRequiredDelimiter:
+        return "Delimiter is not detected, but flag group set it to be mandatory";
         break;
     case kArgpxStatusFlagParamDeficiency:
         return "The flag gets insufficient parameters";
@@ -266,7 +266,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             next_delim_ptr = strchr(param_start, delim);
             if (next_delim_ptr == NULL) {
                 if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_DELIMITER) != 0)
-                    ArgpxExit_(data, kArgpxStatusMissingDelimiter);
+                    ArgpxExit_(data, kArgpxStatusRequiredDelimiter);
                 partition_type = kPartitionByArguments;
             } else {
                 partition_type = kPartitionByDelimiter;
@@ -382,7 +382,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
     if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-        ArgpxExit_(data, kArgpxStatusMissingAssigner);
+        ArgpxExit_(data, kArgpxStatusRequiredAssigner);
 
     // get flag parameters
     switch (conf_ptr->action_type) {
@@ -438,7 +438,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
         if (conf_ptr == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
-            ArgpxExit_(data, kArgpxStatusMissingAssigner);
+            ArgpxExit_(data, kArgpxStatusRequiredAssigner);
         name_len = strlen(conf_ptr->name);
 
         // get parameter start pointer
