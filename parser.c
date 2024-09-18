@@ -347,9 +347,11 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 
     And flag may have assignment symbol, I think the caller should already known the names range.
     In this case, it make sense to get a max_name_len
+
+    TODO this function parameter is so long
  */
-static struct ArgpxFlag *MatchingConfigByName_(struct UnifiedData_ data[static 1], int g_idx, char *name_start,
-                                              int max_name_len, bool search_first)
+static struct ArgpxFlag *MatchConfByName_(struct UnifiedData_ data[static 1], int g_idx, char *name_start,
+                                              int max_name_len, bool search_first, bool with_excess)
 {
     struct ArgpxFlag *conf_ptr;
     int conf_name_len;
@@ -382,7 +384,7 @@ static struct ArgpxFlag *MatchingConfigByName_(struct UnifiedData_ data[static 1
     }
 
     // if there is extra length, no matched
-    if (max_name_len != final_name_len)
+    if (max_name_len != final_name_len and with_excess != true)
         return NULL;
 
     return final_conf_ptr;
@@ -400,7 +402,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf_ptr = MatchingConfigByName_(data, g_idx, name_start, name_len, false);
+    struct ArgpxFlag *conf_ptr = MatchConfByName_(data, g_idx, name_start, name_len, false, false);
 
     // some check
     if (conf_ptr == NULL)
@@ -458,7 +460,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
         if (available_len <= 0)
             break;
 
-        struct ArgpxFlag *conf_ptr = MatchingConfigByName_(data, g_idx, name_start_ptr, available_len, true);
+        struct ArgpxFlag *conf_ptr = MatchConfByName_(data, g_idx, name_start_ptr, available_len, true, true);
         if (conf_ptr == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
