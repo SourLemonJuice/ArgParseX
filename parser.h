@@ -48,6 +48,7 @@ struct ArgpxFlagGroup {
     char assigner;
     // parameter delimiter
     char delimiter;
+    // TODO add a search_first's config
 };
 
 /*

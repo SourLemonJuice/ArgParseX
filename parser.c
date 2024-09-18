@@ -338,30 +338,54 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 
 /*
     Matching a name in all flag configs.
-    If name_len <= 0, the value will dynamic by the name length of config
+    It will find the conf with the highest match length in name_start.
+    But if search_first == true, it will find the first matching one:
+
+    e.g. Find "TestTest" and "Test" in "TestTest"
+    false: -> "TestTest"
+    true:  -> "Test"
+
+    And flag may have assignment symbol, I think the caller should already known the names range.
+    In this case, it make sense to get a max_name_len
  */
-static struct ArgpxFlag *MatchingConfigsName_(struct UnifiedData_ data[static 1], int g_idx, char *name_start,
-                                              int name_len)
+static struct ArgpxFlag *MatchingConfigByName_(struct UnifiedData_ data[static 1], int g_idx, char *name_start,
+                                              int max_name_len, bool search_first)
 {
-    // iteration all the flag configs
-    int final_len;
+    struct ArgpxFlag *conf_ptr;
+    int conf_name_len;
+
+    // we may need to find the longest match
+    struct ArgpxFlag *final_conf_ptr = NULL;
+    int final_name_len = 0;
+
     for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
-        struct ArgpxFlag *temp_conf_ptr = &data->confs[conf_idx];
-        if (temp_conf_ptr->group_idx != g_idx)
+        conf_ptr = &data->confs[conf_idx];
+        if (conf_ptr->group_idx != g_idx)
             continue;
 
-        if (name_len <= 0)
-            final_len = strlen(temp_conf_ptr->name);
-        else
-            final_len = name_len;
+        conf_name_len = strlen(conf_ptr->name);
+        if (max_name_len < conf_name_len)
+            continue;
 
         // matching name
-        if (strncmp(name_start, temp_conf_ptr->name, final_len) == 0) {
-            return temp_conf_ptr;
+        if (strncmp(name_start, conf_ptr->name, conf_name_len) != 0)
+            continue;
+
+        // update max length record
+        if (final_name_len < conf_name_len) {
+            final_name_len = conf_name_len;
+            final_conf_ptr = conf_ptr;
         }
+
+        if (search_first == true)
+            break;
     }
 
-    return NULL;
+    // if there is extra length, no matched
+    if (max_name_len != final_name_len)
+        return NULL;
+
+    return final_conf_ptr;
 }
 
 static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_idx,
@@ -376,7 +400,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start, name_len);
+    struct ArgpxFlag *conf_ptr = MatchingConfigByName_(data, g_idx, name_start, name_len, false);
 
     // some check
     if (conf_ptr == NULL)
@@ -434,7 +458,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
         if (available_len <= 0)
             break;
 
-        struct ArgpxFlag *conf_ptr = MatchingConfigsName_(data, g_idx, name_start_ptr, 0);
+        struct ArgpxFlag *conf_ptr = MatchingConfigByName_(data, g_idx, name_start_ptr, available_len, true);
         if (conf_ptr == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         if (assigner_ptr == NULL and ShouldAssignerExist(data, g_ptr, conf_ptr))
