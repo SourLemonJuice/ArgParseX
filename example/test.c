@@ -1,8 +1,13 @@
+#include <iso646.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "parser.h"
+
+#if ARGPX_VERSION_MAIN != 0
+    #error ArgParseX version mismatch
+#endif
 
 static void Error_(struct ArgpxResult *res)
 {

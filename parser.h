@@ -129,9 +129,8 @@ struct ArgpxResult {
     char **argv;
 };
 
-// TODO TBD
-// give user a macro but not enum's name?
-#define ARG_PARSER_VAR_TYPE enum ArgpxVarType
+// the main interface version
+#define ARGPX_VERSION_MAIN 0
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
 struct ArgpxResult *ArgpxMain(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
