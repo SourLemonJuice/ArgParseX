@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+// the main interface version
+#define ARGPX_VERSION_MAIN 0
+
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
@@ -41,8 +44,9 @@ enum ArgpxVarType {
 
 // TODO implement '\0'
 struct ArgpxFlagGroup {
-    uint16_t flag;
+    uint16_t attribute;
     // prefix of flag, like the "--" of "--flag"
+    // all group prefixes cannot be duplicated, including \0 or “” also
     char *prefix;
     // parameter assignment symbol
     char assigner;
@@ -129,9 +133,6 @@ struct ArgpxResult {
     // the command argv
     char **argv;
 };
-
-// the main interface version
-#define ARGPX_VERSION_MAIN 0
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
 struct ArgpxResult *ArgpxMain(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,

@@ -31,19 +31,19 @@ int main(int argc, char *argv[])
 
     struct ArgpxFlagGroup group[] = {
         {
-            .flag = ARGPX_GROUP_MANDATORY_ASSIGNER | ARGPX_GROUP_MANDATORY_DELIMITER,
+            .attribute = ARGPX_GROUP_MANDATORY_ASSIGNER | ARGPX_GROUP_MANDATORY_DELIMITER,
             .prefix = "--",
             .assigner = '=',
             .delimiter = ',',
         },
         {
-            .flag = 0,
+            .attribute = 0,
             .prefix = "++",
             .assigner = '~',
             .delimiter = '-',
         },
         {
-            .flag = ARGPX_GROUP_FLAG_GROUPABLE,
+            .attribute = ARGPX_GROUP_FLAG_GROUPABLE,
             .prefix = "-",
             .assigner = '=',
             .delimiter = ',',

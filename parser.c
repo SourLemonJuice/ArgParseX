@@ -81,26 +81,12 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
 }
 
 /*
-    Check if the arg has reached the boundary.
-    idx_offset will be added to data->arg_idx. This may save something?
-
-    TODO Is this function really necessary?
- */
-static bool ArgIndexWithinBoundary_(struct UnifiedData_ data[static 1], int idx_offset)
-{
-    if (data->arg_idx + idx_offset < data->arg_c)
-        return true;
-    else
-        return false;
-}
-
-/*
     Using the offset shift arguments, it will be safe.
     Return a pointer to the new argument
  */
 static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
-    if (ArgIndexWithinBoundary_(data, offset) == false)
+    if (data->arg_idx + offset >= data->arg_c)
         ArgpxExit_(data, kArgpxStatusShiftingArg);
     data->arg_idx += offset;
 
@@ -129,27 +115,18 @@ static struct ArgpxFlagGroup *GroupIndexToPointer_(struct UnifiedData_ data[stat
 }
 
 /*
-    Should the assigner of this flag config is mandatory?
+    Copy the current argument to result data structure as a command parameter
  */
-static bool ShouldAssignerExist(struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1],
-                                struct ArgpxFlag conf_ptr[static 1])
+static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
 {
-    switch (conf_ptr->action_type) {
-    case kArgpxActionSetBool:
-        return false;
-        break;
-    case kArgpxActionParamMulti:
-    case kArgpxActionParamSingle:
-        if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_ASSIGNER) != 0)
-            return true;
-        return false;
-        break;
-    default:
-        ArgpxExit_(data, kArgpxStatusActionUnavailable);
-        break;
-    }
+    char *arg = data->args[data->arg_idx];
+    struct ArgpxResult *res = data->res;
 
-    return true;
+    res->params_count += 1;
+    size_t this_arg_size = strlen(arg) + 1;
+
+    res->params = realloc(res->params, sizeof(char * [res->params_count]));
+    res->params[res->params_count - 1] = arg;
 }
 
 /*
@@ -193,35 +170,37 @@ static void StringNumberToVariable_(char *source_str, int number, enum ArgpxVarT
     }
 }
 
-/*
-    Copy the current argument to result data structure as a command parameter
- */
-static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
-{
-    char *arg = data->args[data->arg_idx];
-    struct ArgpxResult *res = data->res;
-
-    res->params_count += 1;
-    size_t this_arg_size = strlen(arg) + 1;
-
-    res->params = realloc(res->params, sizeof(char * [res->params_count]));
-    res->params[res->params_count - 1] = arg;
-}
+enum ParamPartitionMode_ {
+    kPartitionByArguments_,
+    kPartitionByDelimiter_,
+};
 
 /*
-    Invert the bool value of "toggle_ptr" in flag config
+    Use for ActionParamAny_()
  */
-static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ data[static 1],
+    struct ArgpxFlagGroup *group_ptr, struct ArgpxFlag conf_ptr[static 1], char *param, int param_range_len)
 {
-    struct ArgpxHidden_OutcomeSetBool *ptr = &conf_ptr->action_load.set_bool;
-    *ptr->target_ptr = ptr->source;
+    enum ParamPartitionMode_ mode;
+    char delim = group_ptr->delimiter;
+
+    char *delim_ptr = memchr(param, delim, param_range_len);
+    if (delim_ptr == NULL) {
+        if ((group_ptr->attribute & ARGPX_GROUP_MANDATORY_DELIMITER) != 0)
+            ArgpxExit_(data, kArgpxStatusRequiredDelimiter);
+        mode = kPartitionByArguments_;
+    } else {
+        mode = kPartitionByDelimiter_;
+    }
+
+    return mode;
 }
 
 /*
     If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
  */
-static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
-                            char *param_start_ptr)
+static void ActionParamAny_(
+    struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr)
 {
     struct ArgpxFlagGroup *group_ptr = &data->groups[conf_ptr->group_idx];
     char delim = group_ptr->delimiter;
@@ -254,31 +233,12 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
     else
         param_start = ShiftArguments_(data, 1);
 
-    enum {
-        kPartitionNotSet,
-        kPartitionByArguments,
-        kPartitionByDelimiter,
-    } partition_type = kPartitionNotSet;
+    enum ParamPartitionMode_ partition_mode =
+        DetectParamPartitionMode_(data, group_ptr, conf_ptr, param_start, strlen(param_start));
 
     for (int var_idx = 0; var_idx < param_count; var_idx++) {
-        // set the parameter get type
-        if (partition_type == kPartitionNotSet) {
-            next_delim_ptr = strchr(param_start, delim);
-            if (next_delim_ptr == NULL) {
-                if ((group_ptr->flag & ARGPX_GROUP_MANDATORY_DELIMITER) != 0)
-                    ArgpxExit_(data, kArgpxStatusRequiredDelimiter);
-                partition_type = kPartitionByArguments;
-            } else {
-                partition_type = kPartitionByDelimiter;
-            }
-        }
-
-        switch (partition_type) {
-        case kPartitionNotSet:
-            // never impossible to enter. just make compiler don't take warning
-            ArgpxExit_(data, kArgpxStatusFailure);
-            break;
-        case kPartitionByArguments:
+        switch (partition_mode) {
+        case kPartitionByArguments_:
             if (first_param == true)
                 first_param = false;
             else
@@ -286,7 +246,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
 
             param_len = strlen(param_start);
             break;
-        case kPartitionByDelimiter:
+        case kPartitionByDelimiter_:
             if (first_param == true)
                 first_param = false;
             else
@@ -309,9 +269,18 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             ArgpxExit_(data, kArgpxStatusFlagParamDeficiency);
 
         // i know it's confusing...
-        StringNumberToVariable_(param_start, param_len, unit_ptr[var_idx].type,
-                                unit_ptr[var_idx].ptr /* passing secondary pointer */);
+        StringNumberToVariable_(
+            param_start, param_len, unit_ptr[var_idx].type, unit_ptr[var_idx].ptr /* passing secondary pointer */);
     }
+}
+
+/*
+    Invert the bool value of "toggle_ptr" in flag config
+ */
+static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+{
+    struct ArgpxHidden_OutcomeSetBool *ptr = &conf_ptr->action_load.set_bool;
+    *ptr->target_ptr = ptr->source;
 }
 
 /*
@@ -325,15 +294,46 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 {
     char *arg_ptr;
     struct ArgpxFlagGroup *g_ptr;
+    int no_prefix_group_idx = -1;
     for (int g_idx = 0; g_idx < data->group_c; g_idx++) {
         arg_ptr = data->args[data->arg_idx];
         g_ptr = GroupIndexToPointer_(data, g_idx);
+
+        if (g_ptr->prefix[0] == '\0')
+            no_prefix_group_idx = g_idx;
 
         if (strncmp(arg_ptr, g_ptr->prefix, strlen(g_ptr->prefix)) == 0)
             return g_idx;
     }
 
+    if (no_prefix_group_idx >= 0)
+        return no_prefix_group_idx;
+
     return INT_MIN;
+}
+
+/*
+    Should the assigner of this flag config is mandatory?
+ */
+static bool ShouldAssignerExist(
+    struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
+{
+    switch (conf_ptr->action_type) {
+    case kArgpxActionSetBool:
+        return false;
+        break;
+    case kArgpxActionParamMulti:
+    case kArgpxActionParamSingle:
+        if ((group_ptr->attribute & ARGPX_GROUP_MANDATORY_ASSIGNER) != 0)
+            return true;
+        return false;
+        break;
+    default:
+        ArgpxExit_(data, kArgpxStatusActionUnavailable);
+        break;
+    }
+
+    return true;
 }
 
 /*
@@ -351,7 +351,7 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
     TODO this function parameter is so long
  */
 static struct ArgpxFlag *MatchConfByName_(struct UnifiedData_ data[static 1], int g_idx, char *name_start,
-                                              int max_name_len, bool search_first, bool with_excess)
+    int max_name_len, bool search_first, bool with_excess)
 {
     struct ArgpxFlag *conf_ptr;
     int conf_name_len;
@@ -390,8 +390,8 @@ static struct ArgpxFlag *MatchConfByName_(struct UnifiedData_ data[static 1], in
     return final_conf_ptr;
 }
 
-static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_idx,
-                                      struct ArgpxFlagGroup g_ptr[static 1])
+static void ParseArgumentIndependent_(
+    struct UnifiedData_ data[static 1], int g_idx, struct ArgpxFlagGroup g_ptr[static 1])
 {
     char *arg = data->args[data->arg_idx];
     char *assigner_ptr = strchr(arg, g_ptr->assigner); // if NULL no assigner
@@ -425,8 +425,8 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], int g_
     }
 }
 
-static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_idx,
-                                    struct ArgpxFlagGroup g_ptr[static 1])
+static void ParseArgumentGroupable_(
+    struct UnifiedData_ data[static 1], int g_idx, struct ArgpxFlagGroup g_ptr[static 1])
 {
     char *arg = data->args[data->arg_idx];
     char *assigner_ptr = strchr(arg, g_ptr->assigner); // if NULL no assigner
@@ -472,12 +472,13 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
         case kArgpxActionParamSingle:
             // get parameter start pointer
             // the assigner is the most decisive
-            if (available_len == name_len and assigner_ptr == NULL) {
-                param_start_ptr = ShiftArguments_(data, 1);
-            } else {
+            // TODO bug here
+            if (available_len != name_len) {
                 param_start_ptr = name_start_ptr + name_len;
                 if (assigner_ptr != NULL)
                     param_start_ptr += assigner_len;
+            } else {
+                param_start_ptr = NULL;
             }
 
             ActionParamAny_(data, conf_ptr, param_start_ptr);
@@ -504,7 +505,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], int g_id
     TODO I don't like this parameter style
  */
 struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
-                              struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *))
+    struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *))
 {
     struct UnifiedData_ data = {
         .res = &(struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = argc, .argv = argv},
@@ -518,7 +519,7 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
         .confs = opts,
     };
 
-    for (; ArgIndexWithinBoundary_(&data, 0) == true; data.arg_idx++) {
+    for (; data.arg_idx < data.arg_c == true; data.arg_idx++) {
         // update index record
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
@@ -530,7 +531,7 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
             continue;
         }
 
-        if ((g_ptr->flag & ARGPX_GROUP_FLAG_GROUPABLE) != 0)
+        if ((g_ptr->attribute & ARGPX_GROUP_FLAG_GROUPABLE) != 0)
             ParseArgumentGroupable_(&data, g_idx, g_ptr);
         else
             ParseArgumentIndependent_(&data, g_idx, g_ptr);
