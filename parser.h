@@ -8,20 +8,21 @@
 // the main interface version
 #define ARGPX_VERSION_MAIN 0
 
+// details are in ArgpxStatusToString()
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
     kArgpxStatusActionUnavailable,
-    kArgpxStatusShiftingArg,
     kArgpxStatusUnknownFlag,
-    kArgpxStatusRequiredAssigner,
-    kArgpxStatusRequiredDelimiter,
+    kArgpxStatusNoArgAvailableToShifting,
+    kArgpxStatusNotAllowedUseAssigner,
+    kArgpxStatusNotAllowedUseDelimiter,
     kArgpxStatusFlagParamDeficiency,
 };
 
 enum ArgpxActionType {
     kArgpxActionParamMulti,
-    kArgpxActionParamSingle, // TODO
+    kArgpxActionParamSingle,
     kArgpxActionParamList,   // TODO
     kArgpxActionSetMemory,   // TODO
     kArgpxActionSetBool,
@@ -37,8 +38,9 @@ enum ArgpxVarType {
     kArgpxVarTypeDouble,
 };
 
-#define ARGPX_ATTR_PARAM_MANDATORY_ASSIGNMENT 0b1 << 0
-#define ARGPX_ATTR_PARAM_MANDATORY_DELIMITER 0b1 << 1
+#define ARGPX_ATTR_PARAM_DISABLE_ASSIGNER 0b1 << 0
+// TODO add more control for parameter get
+#define ARGPX_ATTR_PARAM_DISABLE_DELIMITER 0b1 << 1
 #define ARGPX_ATTR_COMPOSABLE 0b1 << 2
 #define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 3
 

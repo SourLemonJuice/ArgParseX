@@ -69,6 +69,10 @@ static void ArgpxExit_(struct UnifiedData_ data[static 1], enum ArgpxStatus stat
 {
     data->res->status = status;
 
+    // update current arg record
+    data->res->current_argv_idx = data->arg_idx;
+    data->res->current_argv_ptr = data->args[data->arg_idx];
+
     if (data->ErrorCallback != NULL)
         data->ErrorCallback(data->res);
 
@@ -85,22 +89,22 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Processing success";
         break;
     case kArgpxStatusFailure:
-        return "Generic unknown error";
+        return "Generic unknown error, I must be lazy~~~";
         break;
     case kArgpxStatusActionUnavailable:
-        return "Flag action availability error. Maybe that's not available in the current setup";
+        return "Flag action type unavailable. Not implemented or configuration conflict";
         break;
-    case kArgpxStatusShiftingArg:
-        return "There are no more arguments to get";
+    case kArgpxStatusNoArgAvailableToShifting:
+        return "There is no more argument available to get";
         break;
     case kArgpxStatusUnknownFlag:
-        return "Unknown flag but the flag group matched(by prefix)";
+        return "Unknown flag name but the group matched(by prefix)";
         break;
-    case kArgpxStatusRequiredAssigner:
-        return "Assignment symbol(assigner) is not detected, but flag group set it to be mandatory";
+    case kArgpxStatusNotAllowedUseAssigner:
+        return "Assignment symbol(assigner) is detected, but for some reason it's not available here";
         break;
-    case kArgpxStatusRequiredDelimiter:
-        return "Delimiter is not detected, but flag group set it to be mandatory";
+    case kArgpxStatusNotAllowedUseDelimiter:
+        return "Delimiter is detected, but for some reason it's not available here";
         break;
     case kArgpxStatusFlagParamDeficiency:
         return "The flag gets insufficient parameters";
@@ -117,7 +121,7 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
 static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
     if (data->arg_idx + offset >= data->arg_c)
-        ArgpxExit_(data, kArgpxStatusShiftingArg);
+        ArgpxExit_(data, kArgpxStatusNoArgAvailableToShifting);
     data->arg_idx += offset;
 
     return data->args[data->arg_idx];
@@ -216,10 +220,10 @@ static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ da
 
     char *delim_ptr = strnstr_(param, group_ptr->delimiter, param_range_len);
     if (delim_ptr == NULL) {
-        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_MANDATORY_DELIMITER) != 0)
-            ArgpxExit_(data, kArgpxStatusRequiredDelimiter);
         mode = kPartitionByArguments_;
     } else {
+        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_DELIMITER) != 0)
+            ArgpxExit_(data, kArgpxStatusNotAllowedUseDelimiter);
         mode = kPartitionByDelimiter_;
     }
 
@@ -259,9 +263,9 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
         unit_ptr = conf_ptr->action_load.param_multi.units;
 
         partition_mode = DetectParamPartitionMode_(data, group_ptr, conf_ptr, final_param_start, strlen(final_param_start));
-        // if caller doesn't want the parameter to be split with args, exit
+        // if caller doesn't want the parameter to be split by args, exit
         if (partition_mode == kPartitionByArguments_ and allow_multi_arg == false)
-            ArgpxExit_(data, kArgpxStatusFlagParamDeficiency);
+            ArgpxExit_(data, kArgpxStatusNotAllowedUseDelimiter);
         break;
     case kArgpxActionParamSingle:
         param_count = 1;
@@ -358,7 +362,7 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 /*
     Should the assigner of this flag config is mandatory?
  */
-static bool ShouldAssignerExist_(
+static bool ShouldAssignerCanExist_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     switch (conf_ptr->action_type) {
@@ -367,7 +371,7 @@ static bool ShouldAssignerExist_(
         break;
     case kArgpxActionParamMulti:
     case kArgpxActionParamSingle:
-        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_MANDATORY_ASSIGNMENT) != 0)
+        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ASSIGNER) == 0)
             return true;
         return false;
         break;
@@ -447,8 +451,8 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     // some check
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
-    if (assigner_ptr == NULL and ShouldAssignerExist_(data, ca->grp, conf_ptr))
-        ArgpxExit_(data, kArgpxStatusRequiredAssigner);
+    if (assigner_ptr != NULL and ShouldAssignerCanExist_(data, ca->grp, conf_ptr) == false)
+        ArgpxExit_(data, kArgpxStatusNotAllowedUseAssigner);
 
     // get flag parameters
     switch (conf_ptr->action_type) {
@@ -457,7 +461,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
         break;
     case kArgpxActionParamMulti:
     case kArgpxActionParamSingle:
-        ActionParamAny_(data, conf_ptr, assigner_ptr + 1, 0, true);
+        ActionParamAny_(data, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0, true);
         break;
     default:
         ArgpxExit_(data, kArgpxStatusActionUnavailable);
@@ -470,11 +474,11 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
     char *arg = data->args[data->arg_idx];
 
     // believe that the prefix exists
-    char *base_start = arg + ca->grp_prefix_len;
+    char *base_ptr = arg + ca->grp_prefix_len;
     int remaining_len = strlen(arg) - ca->grp_prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlag *conf = MatchConfByName_(data, ca, base_start, 0, true);
+        struct ArgpxFlag *conf = MatchConfByName_(data, ca, base_ptr, 0, true);
         int name_len = strlen(conf->name);
         remaining_len -= name_len;
 
@@ -482,10 +486,10 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
         // if group attribute not set, next_prefix will always be NULL
         char *next_prefix = NULL;
         if ((ca->grp->attribute & ARGPX_ATTR_COMPOSABLE_NEED_PREFIX) != 0)
-            next_prefix = strstr(base_start, ca->grp->prefix);
+            next_prefix = strstr(base_ptr, ca->grp->prefix);
 
-        // processing parameter
-        char *param_start = base_start + name_len;
+        // parameter stuff
+        char *param_start = base_ptr + name_len;
         int param_len = 0;
 
         switch (conf->action_type) {
@@ -499,12 +503,12 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
             remaining_len -= param_len;
 
             // is the assigner exist?
-            if (strncmp(base_start + name_len, ca->grp->assigner, ca->grp_assigner_len) == 0) {
+            if (strncmp(base_ptr + name_len, ca->grp->assigner, ca->grp_assigner_len) == 0) {
                 param_start += ca->grp_assigner_len;
                 remaining_len -= ca->grp_assigner_len;
             } else {
-                if (ShouldAssignerExist_(data, ca->grp, conf) == true)
-                    ArgpxExit_(data, kArgpxStatusRequiredAssigner);
+                if (ShouldAssignerCanExist_(data, ca->grp, conf) == false)
+                    ArgpxExit_(data, kArgpxStatusNotAllowedUseAssigner);
             }
 
             ActionParamAny_(
@@ -518,12 +522,12 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
             break;
         }
 
-        // update base_start
+        // update base_ptr
         // don't forget the prefix length in the NEED_PREFIX mode
         if (next_prefix == NULL) {
-            base_start = param_start + param_len;
+            base_ptr = param_start + param_len;
         } else {
-            base_start = next_prefix + ca->grp_prefix_len;
+            base_ptr = next_prefix + ca->grp_prefix_len;
             remaining_len -= ca->grp_prefix_len;
         }
     }

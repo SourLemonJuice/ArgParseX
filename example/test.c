@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
     struct ArgpxFlagGroup group[] = {
         {
-            .attribute = ARGPX_ATTR_PARAM_MANDATORY_ASSIGNMENT | ARGPX_ATTR_PARAM_MANDATORY_DELIMITER,
+            .attribute = /* TODO waiting for add more controls */,
             .prefix = "--",
             .assigner = "=",
             .delimiter = ",",
