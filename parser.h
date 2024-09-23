@@ -37,22 +37,22 @@ enum ArgpxVarType {
     kArgpxVarTypeDouble,
 };
 
-// flag's range is uint16_t
-#define ARGPX_GROUP_MANDATORY_ASSIGNER 0b1 << 0
-#define ARGPX_GROUP_MANDATORY_DELIMITER 0b1 << 1
-#define ARGPX_GROUP_FLAG_GROUPABLE 0b1 << 2
+#define ARGPX_ATTR_PARAM_MANDATORY_ASSIGNMENT 0b1 << 0
+#define ARGPX_ATTR_PARAM_MANDATORY_DELIMITER 0b1 << 1
+#define ARGPX_ATTR_COMPOSABLE 0b1 << 2
+#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 3
 
 // TODO implement '\0'
 struct ArgpxFlagGroup {
-    uint16_t attribute;
-    // prefix of flag, like the "--" of "--flag"
-    // all group prefixes cannot be duplicated, including \0 or “” also
+    // all group attribute
+    uint8_t attribute;
+    // prefix of flag, like the "--" of "--flag". it's a string.
+    // all group prefixes cannot be duplicated, including “”(single \0) also
     char *prefix;
-    // parameter assignment symbol
-    char assigner;
-    // parameter delimiter
-    char delimiter;
-    // TODO add a search_first's config
+    // parameter assignment symbol(string)
+    char *assigner;
+    // parameter delimiter(string)
+    char *delimiter;
 };
 
 /*
@@ -136,6 +136,6 @@ struct ArgpxResult {
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
 struct ArgpxResult *ArgpxMain(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
-                              struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));
+    struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));
 
 #endif
