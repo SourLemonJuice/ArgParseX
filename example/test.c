@@ -15,8 +15,14 @@ static void Error_(struct ArgpxResult *res)
     printf("%s\n", ArgpxStatusToString(res->status));
     printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->current_argv_ptr);
     exit(EXIT_FAILURE);
+}
 
-    return;
+static char *BoolToString_(bool input)
+{
+    if (input == true)
+        return "true";
+    else
+        return "false";
 }
 
 int main(int argc, char *argv[])
@@ -91,19 +97,13 @@ int main(int argc, char *argv[])
             .group_idx = 3,
             .name = "win1",
             .action_type = kArgpxActionParamSingle,
-            .action_load.param_single = {
-                .type = kArgpxVarString,
-                .ptr = &test_win_str1,
-            }
+            .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str1},
         },
         {
             .group_idx = 3,
             .name = "win2",
             .action_type = kArgpxActionParamSingle,
-            .action_load.param_single = {
-                .type = kArgpxVarString,
-                .ptr = &test_win_str2,
-            }
+            .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str2},
         },
         {
             .group_idx = 2,
@@ -120,25 +120,14 @@ int main(int argc, char *argv[])
     };
 
     struct ArgpxResult *res = ArgpxMain(argc, 1, argv, group, sizeof(group) / sizeof(struct ArgpxFlagGroup), ArgpxFlag,
-                                        sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag), Error_);
+        sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag), Error_);
 
     printf("test_str group 0: %s, %s\n", test_str1, test_str2);
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);
     printf("test_str group 1: %s\n", test_str31);
-    printf("win group 3: %s, %s\n", test_win_str1, test_win_str2);
-    printf("--bool and -a: ");
-
-    if (test_bool == true)
-        printf("true ");
-    else
-        printf("false ");
-
-    if (test_bool2 == true)
-        printf("true");
-    else
-        printf("false");
-
-    printf("\n");
+    printf("/win1 and /win2: %s, %s\n", test_win_str1, test_win_str2);
+    printf("--bool: %s\n", BoolToString_(test_bool));
+    printf("-a: %s\n", BoolToString_(test_bool2));
 
     printf("==== command parameters ====\n");
     for (int i = 0; i < res->params_count; i++) {
