@@ -5,8 +5,8 @@
 
 #include "parser.h"
 
-#if ARGPX_VERSION_MAIN != 0
-    #error ArgParseX version mismatch
+#if ARGPX_VERSION_MAJOR != 0
+    #error ArgParseX major version mismatch
 #endif
 
 static void Error_(struct ArgpxResult *res)
@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
     struct ArgpxFlagGroup group[] = {
         {
-            .attribute = /* TODO waiting for add more controls */,
+            .attribute = 0 /* TODO waiting for add more controls */,
             .prefix = "--",
             .assigner = "=",
             .delimiter = ",",
