@@ -1,5 +1,5 @@
-#ifndef ARG_PARSE_X_H_
-#define ARG_PARSE_X_H_
+#ifndef ARGPX_H_
+#define ARGPX_H_
 
 #include <stdbool.h>
 #include <stdint.h>
