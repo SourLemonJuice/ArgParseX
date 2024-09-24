@@ -446,10 +446,12 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
     if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, ca->grp, conf_ptr) == false)
         ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
-    if (assigner_ptr != NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
-        ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
-    if (assigner_ptr == NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
-        ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
+    if (ShouldFlagTypeHaveParam_(data, ca->grp, conf_ptr) == true) {
+        if (assigner_ptr != NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+            ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
+        if (assigner_ptr == NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+            ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
+    }
 
     // get flag parameters
     switch (conf_ptr->action_type) {
@@ -466,7 +468,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     }
 }
 
-static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1])
+static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1])
 {
     char *arg = data->args[data->arg_idx];
 
@@ -476,6 +478,8 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
 
     while (remaining_len > 0) {
         struct ArgpxFlag *conf = MatchConfByName_(data, ca, base_ptr, 0, true);
+        if (conf == NULL)
+            ArgpxExit_(data, kArgpxStatusUnknownFlag);
         int name_len = strlen(conf->name);
         remaining_len -= name_len;
 
@@ -488,7 +492,7 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
         // parameter stuff
         char *param_start = base_ptr + name_len;
         int param_len = 0;
-        bool assigner_exist;
+        bool assigner_exist = false;
 
         switch (conf->action_type) {
         case kArgpxActionParamMulti:
@@ -585,7 +589,7 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
         cache.grp_delimiter_len = strlen(cache.grp->delimiter);
 
         if ((cache.grp->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
-            ParseArgumentGroupable_(&data, &cache);
+            ParseArgumentComposable_(&data, &cache);
         else
             ParseArgumentIndependent_(&data, &cache);
     }
