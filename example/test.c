@@ -12,7 +12,7 @@
 static void Error_(struct ArgpxResult *res)
 {
     printf("Error, parser status: %d\n", res->status);
-    printf("Status to string: %s\n", ArgpxStatusToString(res->status));
+    printf("%s\n", ArgpxStatusToString(res->status));
     printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->current_argv_ptr);
     exit(EXIT_FAILURE);
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
     struct ArgpxFlagGroup group[] = {
         {
-            .attribute = 0 /* TODO waiting for add more controls */,
+            .attribute = ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG | ARGPX_ATTR_PARAM_DISABLE_ARG,
             .prefix = "--",
             .assigner = "=",
             .delimiter = ",",
@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
             .action_load.param_multi.count = 2,
             .action_load.param_multi.units =
                 (struct ArgpxParamUnit[]){
-                    {.type = kArgpxVarTypeString, .ptr = &test_str1},
-                    {.type = kArgpxVarTypeString, .ptr = &test_str2},
+                    {.type = kArgpxVarString, .ptr = &test_str1},
+                    {.type = kArgpxVarString, .ptr = &test_str2},
                 },
         },
         {
@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
             .action_load.param_multi.count = 2,
             .action_load.param_multi.units =
                 (struct ArgpxParamUnit[]){
-                    {.type = kArgpxVarTypeString, .ptr = &test_str21},
-                    {.type = kArgpxVarTypeString, .ptr = &test_str22},
+                    {.type = kArgpxVarString, .ptr = &test_str21},
+                    {.type = kArgpxVarString, .ptr = &test_str22},
                 },
         },
         {
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
             .name = "win1",
             .action_type = kArgpxActionParamSingle,
             .action_load.param_single = {
-                .type = kArgpxVarTypeString,
+                .type = kArgpxVarString,
                 .ptr = &test_win_str1,
             }
         },
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
             .name = "win2",
             .action_type = kArgpxActionParamSingle,
             .action_load.param_single = {
-                .type = kArgpxVarTypeString,
+                .type = kArgpxVarString,
                 .ptr = &test_win_str2,
             }
         },
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
             .group_idx = 2,
             .name = "b",
             .action_type = kArgpxActionParamSingle,
-            .action_load.param_single = {.type = kArgpxVarTypeString, .ptr = &test_str31},
+            .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_str31},
         },
     };
 

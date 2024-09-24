@@ -87,28 +87,28 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     switch (status) {
     case kArgpxStatusSuccess:
         return "Processing success";
-        break;
     case kArgpxStatusFailure:
         return "Generic unknown error, I must be lazy~~~";
-        break;
-    case kArgpxStatusActionUnavailable:
-        return "Flag action type unavailable. Not implemented or configuration conflict";
-        break;
-    case kArgpxStatusNoArgAvailableToShifting:
-        return "There is no more argument available to get";
-        break;
     case kArgpxStatusUnknownFlag:
         return "Unknown flag name but the group matched(by prefix)";
-        break;
-    case kArgpxStatusNotAllowedUseAssigner:
-        return "Assignment symbol(assigner) is detected, but for some reason it's not available here";
-        break;
-    case kArgpxStatusNotAllowedUseDelimiter:
-        return "Delimiter is detected, but for some reason it's not available here";
-        break;
+    case kArgpxStatusActionUnavailable:
+        return "Flag action type unavailable. Not implemented or configuration conflict";
+    case kArgpxStatusNoArgAvailableToShifting:
+        return "There is no more argument available to get";
+    case kArgpxStatusFlagParamNoNeeded:
+        return "This flag don't need parameter, but the input seems to be assigning a value";
+    case kArgpxStatusAssignmentDisallowAssigner:
+        return "Detected assignment mode is Assigner, but for some reason, unavailable";
+    case kArgpxStatusAssignmentDisallowTrailing:
+        return "Detected assignment mode is Trailing, but for some reason, unavailable";
+    case kArgpxStatusAssignmentDisallowArg:
+        return "Detected assignment mode is Arg(argument), but for some reason, unavailable";
+    case kArgpxStatusParamDisallowDelimiter:
+        return "Detected parameter partition mode is Delimiter, but for some reason, unavailable";
+    case kArgpxStatusParamDisallowArg:
+        return "Detected parameter partition mode is Arg(argument), but for some reason, unavailable";
     case kArgpxStatusFlagParamDeficiency:
         return "The flag gets insufficient parameters";
-        break;
     }
 
     return NULL;
@@ -188,18 +188,13 @@ static void StringNumberToVariable_(char *source_str, int number, enum ArgpxVarT
 
     // remember to change the first level pointer, but not just change secondary one
     // if can, the value_str needs to free up
-    // TODO implement other types
     switch (type) {
-    case kArgpxVarTypeString:
+    case kArgpxVarString:
         *ptr = value_str;
         break;
-    case kArgpxVarTypeInt:
-        break;
-    case kArgpxVarTypeBool:
-        break;
-    case kArgpxVarTypeFloat:
-        break;
-    case kArgpxVarTypeDouble:
+    default:
+        // TODO implement other types
+        *ptr = NULL;
         break;
     }
 }
@@ -220,10 +215,12 @@ static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ da
 
     char *delim_ptr = strnstr_(param, group_ptr->delimiter, param_range_len);
     if (delim_ptr == NULL) {
+        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ARG) != 0)
+            ArgpxExit_(data, kArgpxStatusParamDisallowArg);
         mode = kPartitionByArguments_;
     } else {
         if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_DELIMITER) != 0)
-            ArgpxExit_(data, kArgpxStatusNotAllowedUseDelimiter);
+            ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
         mode = kPartitionByDelimiter_;
     }
 
@@ -262,10 +259,11 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
         param_count = conf_ptr->action_load.param_multi.count;
         unit_ptr = conf_ptr->action_load.param_multi.units;
 
-        partition_mode = DetectParamPartitionMode_(data, group_ptr, conf_ptr, final_param_start, strlen(final_param_start));
+        partition_mode =
+            DetectParamPartitionMode_(data, group_ptr, conf_ptr, final_param_start, strlen(final_param_start));
         // if caller doesn't want the parameter to be split by args, exit
         if (partition_mode == kPartitionByArguments_ and allow_multi_arg == false)
-            ArgpxExit_(data, kArgpxStatusNotAllowedUseDelimiter);
+            ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
         break;
     case kArgpxActionParamSingle:
         param_count = 1;
@@ -362,25 +360,20 @@ static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
 /*
     Should the assigner of this flag config is mandatory?
  */
-static bool ShouldAssignerCanExist_(
+static bool ShouldFlagTypeHaveParam_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     switch (conf_ptr->action_type) {
     case kArgpxActionSetBool:
         return false;
-        break;
     case kArgpxActionParamMulti:
     case kArgpxActionParamSingle:
-        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ASSIGNER) == 0)
-            return true;
-        return false;
-        break;
+        return true;
     default:
         ArgpxExit_(data, kArgpxStatusActionUnavailable);
-        break;
     }
 
-    return true;
+    return false;
 }
 
 /*
@@ -451,17 +444,21 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     // some check
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
-    if (assigner_ptr != NULL and ShouldAssignerCanExist_(data, ca->grp, conf_ptr) == false)
-        ArgpxExit_(data, kArgpxStatusNotAllowedUseAssigner);
+    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, ca->grp, conf_ptr) == false)
+        ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
+    if (assigner_ptr != NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+        ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
+    if (assigner_ptr == NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+        ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
 
     // get flag parameters
     switch (conf_ptr->action_type) {
-    case kArgpxActionSetBool:
-        ActionSetBool_(data, conf_ptr);
-        break;
     case kArgpxActionParamMulti:
     case kArgpxActionParamSingle:
         ActionParamAny_(data, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0, true);
+        break;
+    case kArgpxActionSetBool:
+        ActionSetBool_(data, conf_ptr);
         break;
     default:
         ArgpxExit_(data, kArgpxStatusActionUnavailable);
@@ -491,10 +488,23 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
         // parameter stuff
         char *param_start = base_ptr + name_len;
         int param_len = 0;
+        bool assigner_exist;
 
         switch (conf->action_type) {
         case kArgpxActionParamMulti:
         case kArgpxActionParamSingle:
+            // is the assigner exist?
+            assigner_exist = strncmp(base_ptr + name_len, ca->grp->assigner, ca->grp_assigner_len) == 0;
+            if (assigner_exist == true and ShouldFlagTypeHaveParam_(data, ca->grp, conf) == false)
+                ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
+            if (assigner_exist == true and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+                ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
+
+            if (assigner_exist) {
+                param_start += ca->grp_assigner_len;
+                remaining_len -= ca->grp_assigner_len;
+            }
+
             // get parameter length
             if (next_prefix == NULL)
                 param_len = strlen(param_start);
@@ -502,17 +512,18 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
                 param_len = next_prefix - param_start;
             remaining_len -= param_len;
 
-            // is the assigner exist?
-            if (strncmp(base_ptr + name_len, ca->grp->assigner, ca->grp_assigner_len) == 0) {
-                param_start += ca->grp_assigner_len;
-                remaining_len -= ca->grp_assigner_len;
-            } else {
-                if (ShouldAssignerCanExist_(data, ca->grp, conf) == false)
-                    ArgpxExit_(data, kArgpxStatusNotAllowedUseAssigner);
-            }
+            // determine the parameter pointer
+            if (param_len <= 0)
+                param_start = NULL;
 
-            ActionParamAny_(
-                data, conf, param_len > 0 ? param_start : NULL, param_len, remaining_len <= 0 ? true : false);
+            // and do some check
+            if (param_start == NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+                ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
+            if (param_start != NULL and assigner_exist == false
+                and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
+                ArgpxExit_(data, kArgpxStatusAssignmentDisallowTrailing);
+
+            ActionParamAny_(data, conf, param_start, param_len, remaining_len <= 0 ? true : false);
             break;
         case kArgpxActionSetBool:
             ActionSetBool_(data, conf);
@@ -525,7 +536,9 @@ static void ParseArgumentGroupable_(struct UnifiedData_ data[static 1], struct U
         // update base_ptr
         // don't forget the prefix length in the NEED_PREFIX mode
         if (next_prefix == NULL) {
-            base_ptr = param_start + param_len;
+            base_ptr += name_len + param_len;
+            if (assigner_exist == true)
+                base_ptr += ca->grp_assigner_len;
         } else {
             base_ptr = next_prefix + ca->grp_prefix_len;
             remaining_len -= ca->grp_prefix_len;

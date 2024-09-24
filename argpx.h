@@ -15,11 +15,15 @@
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
-    kArgpxStatusActionUnavailable,
     kArgpxStatusUnknownFlag,
+    kArgpxStatusActionUnavailable,
     kArgpxStatusNoArgAvailableToShifting,
-    kArgpxStatusNotAllowedUseAssigner,
-    kArgpxStatusNotAllowedUseDelimiter,
+    kArgpxStatusFlagParamNoNeeded,
+    kArgpxStatusAssignmentDisallowAssigner,
+    kArgpxStatusAssignmentDisallowTrailing,
+    kArgpxStatusAssignmentDisallowArg,
+    kArgpxStatusParamDisallowDelimiter,
+    kArgpxStatusParamDisallowArg,
     kArgpxStatusFlagParamDeficiency,
 };
 
@@ -33,24 +37,29 @@ enum ArgpxActionType {
 };
 
 enum ArgpxVarType {
-    kArgpxVarTypeString,
+    kArgpxVarString,
     // TODO
-    kArgpxVarTypeInt,
-    kArgpxVarTypeBool,
-    kArgpxVarTypeFloat,
-    kArgpxVarTypeDouble,
+    kArgpxVarInt,
+    kArgpxVarBool,
+    kArgpxVarFloat,
+    kArgpxVarDouble,
 };
 
-#define ARGPX_ATTR_PARAM_DISABLE_ASSIGNER 0b1 << 0
-// TODO add more control for parameter get
-#define ARGPX_ATTR_PARAM_DISABLE_DELIMITER 0b1 << 1
-#define ARGPX_ATTR_COMPOSABLE 0b1 << 2
-#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 3
+#define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
+// independent flag won't use trailing mode
+#define ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING 0b1 << 1
+#define ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG 0b1 << 2
+
+#define ARGPX_ATTR_PARAM_DISABLE_DELIMITER 0b1 << 3
+#define ARGPX_ATTR_PARAM_DISABLE_ARG 0b1 << 4
+
+#define ARGPX_ATTR_COMPOSABLE 0b1 << 5
+#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 6
 
 // TODO implement '\0'
 struct ArgpxFlagGroup {
     // all group attribute
-    uint8_t attribute;
+    uint16_t attribute;
     // prefix of flag, like the "--" of "--flag". it's a string.
     // all group prefixes cannot be duplicated, including “”(single \0) also
     char *prefix;

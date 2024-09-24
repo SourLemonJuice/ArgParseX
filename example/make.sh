@@ -1,7 +1,7 @@
 #/usr/bin/env bash
 
 src_code=(
-    "../parser.c"
+    "../argpx.c"
     "./test.c"
 )
 
