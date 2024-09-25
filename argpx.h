@@ -56,7 +56,7 @@ enum ArgpxVarType {
 #define ARGPX_ATTR_COMPOSABLE 0b1 << 5
 #define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 6
 
-// TODO implement '\0'
+// TODO unify the meaning of '\0'
 struct ArgpxFlagGroup {
     // all group attribute
     uint16_t attribute;

@@ -128,27 +128,6 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 }
 
 /*
-    Convert group index to pointer.
-    Some special index(negative number) will be resolved to built-in group
-
-    return NULL is non-flag argument
- */
-static struct ArgpxFlagGroup *GroupIndexToPointer_(struct UnifiedData_ data[static 1], int index)
-{
-    if (index == INT_MIN)
-        return NULL;
-
-    struct ArgpxFlagGroup *result = NULL;
-    if (index >= 0) {
-        result = &data->groups[index];
-    } else {
-        // TODO
-    }
-
-    return result;
-}
-
-/*
     Copy the current argument to result data structure as a command parameter
  */
 static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
@@ -333,16 +312,16 @@ static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag 
     Detect the group where the argument is located.
     A group index will be returned. Use GroupIndexToPointer_() convert it to a pointer.
     return:
-      - INT_MIN: no group matched
-      - other integer: give it to GroupIndexToPointer_() it will give back the group pointer
+      - >= 0: valid index of data.groups[]
+      - < 0: no group matched
  */
-static int DetectGroupIndex_(struct UnifiedData_ data[static 1])
+static int MatchingGroup_(struct UnifiedData_ data[static 1])
 {
     char *arg_ptr = data->args[data->arg_idx];
     struct ArgpxFlagGroup *g_ptr;
     int no_prefix_group_idx = -1;
     for (int g_idx = 0; g_idx < data->group_c; g_idx++) {
-        g_ptr = GroupIndexToPointer_(data, g_idx);
+        g_ptr = &data->groups[g_idx];
 
         if (g_ptr->prefix[0] == '\0')
             no_prefix_group_idx = g_idx;
@@ -393,7 +372,7 @@ static bool ShouldFlagTypeHaveParam_(
 
     TODO this function parameter is so long
  */
-static struct ArgpxFlag *MatchConfByName_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ cache[static 1],
+static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
 {
     struct ArgpxFlag *conf_ptr;
@@ -404,7 +383,7 @@ static struct ArgpxFlag *MatchConfByName_(struct UnifiedData_ data[static 1], st
 
     for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
         conf_ptr = &data->confs[conf_idx];
-        if (conf_ptr->group_idx != cache->grp_idx)
+        if (conf_ptr->group_idx != ca->grp_idx)
             continue;
 
         conf_name_len = strlen(conf_ptr->name);
@@ -439,7 +418,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf_ptr = MatchConfByName_(data, ca, name_start, name_len, false);
+    struct ArgpxFlag *conf_ptr = MatchingConf_(data, ca, name_start, name_len, false);
 
     // some check
     if (conf_ptr == NULL)
@@ -477,7 +456,7 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
     int remaining_len = strlen(arg) - ca->grp_prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlag *conf = MatchConfByName_(data, ca, base_ptr, 0, true);
+        struct ArgpxFlag *conf = MatchingConf_(data, ca, base_ptr, 0, true);
         if (conf == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         int name_len = strlen(conf->name);
@@ -576,22 +555,22 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct Argpx
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
-        struct UnifiedGroupCache_ cache = {0};
-        cache.grp_idx = DetectGroupIndex_(&data);
-        cache.grp = GroupIndexToPointer_(&data, cache.grp_idx);
-        if (cache.grp == NULL) {
+        struct UnifiedGroupCache_ ca = {0};
+        ca.grp_idx = MatchingGroup_(&data);
+        if (ca.grp_idx < 0) {
             AppendCommandParameter_(&data);
             continue;
         }
+        ca.grp = &data.groups[ca.grp_idx];
 
-        cache.grp_prefix_len = strlen(cache.grp->prefix);
-        cache.grp_assigner_len = strlen(cache.grp->assigner);
-        cache.grp_delimiter_len = strlen(cache.grp->delimiter);
+        ca.grp_prefix_len = strlen(ca.grp->prefix);
+        ca.grp_assigner_len = strlen(ca.grp->assigner);
+        ca.grp_delimiter_len = strlen(ca.grp->delimiter);
 
-        if ((cache.grp->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
-            ParseArgumentComposable_(&data, &cache);
+        if ((ca.grp->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
+            ParseArgumentComposable_(&data, &ca);
         else
-            ParseArgumentIndependent_(&data, &cache);
+            ParseArgumentIndependent_(&data, &ca);
     }
 
     // TODO find a way to free those malloc()
