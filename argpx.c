@@ -40,6 +40,23 @@ struct UnifiedGroupCache_ {
     int grp_delimiter_len;
 };
 
+struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount] = {
+    [kArgpxHidden_BuiltinGroupGnu] =
+        {
+            .prefix = "--",
+            .assigner = "=",
+            .delimiter = ",",
+            .attribute = ARGPX_ATTR_PARAM_DISABLE_ARG,
+        },
+    [kArgpxHidden_BuiltinGroupUnix] =
+        {
+            .prefix = "-",
+            .assigner = "=",
+            .delimiter = ",",
+            .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG,
+        },
+};
+
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack
  */
@@ -535,8 +552,9 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
 
     TODO I don't like this parameter style
  */
-struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
-    struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *))
+struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], int group_count,
+    struct ArgpxFlagGroup groups[static group_count], int opt_count, struct ArgpxFlag opts[static opt_count],
+    void (*ErrorCallback)(struct ArgpxResult *))
 {
     struct UnifiedData_ data = {
         .res = &(struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = argc, .argv = argv},

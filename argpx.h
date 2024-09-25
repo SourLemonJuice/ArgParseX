@@ -28,12 +28,18 @@ enum ArgpxStatus {
 };
 
 enum ArgpxActionType {
+    // get multiple flag parameters with different data type
     kArgpxActionParamMulti,
+    // get a single flag parameter, but can still convert it's data type
     kArgpxActionParamSingle,
-    kArgpxActionParamList,   // TODO
-    kArgpxActionSetMemory,   // TODO
+    // TODO get flag parameters raw string array
+    kArgpxActionParamList,
+    // TODO If need some custom structure or the other data type
+    kArgpxActionSetMemory,
+    // The most common operation on the command line
     kArgpxActionSetBool,
-    kArgpxActionSetInt,      // TODO
+    // TODO Maybe enum need it
+    kArgpxActionSetInt,
 };
 
 enum ArgpxVarType {
@@ -69,35 +75,24 @@ struct ArgpxFlagGroup {
     char *delimiter;
 };
 
-/*
-    Convert a string in flag's parameter
- */
+// Convert a string in flag's parameter
 struct ArgpxParamUnit {
     enum ArgpxVarType type;
     // a list of secondary pointer of actual variable
     void *ptr;
 };
 
-/*
-    If need some custom structure or the other data type
- */
 struct ArgpxHidden_OutcomeSetMemory {
     size_t size;
     void *source_ptr;
     void *target_ptr;
 };
 
-/*
-    The most common operation on the command line
- */
 struct ArgpxHidden_OutcomeSetBool {
     bool source;
     bool *target_ptr;
 };
 
-/*
-    Maybe enum need it
- */
 struct ArgpxHidden_OutcomeSetInt {
     uintmax_t source;
     uintmax_t *target_ptr;
@@ -148,8 +143,24 @@ struct ArgpxResult {
     char **argv;
 };
 
+enum ArgpxHidden_BuiltinGroup {
+    kArgpxHidden_BuiltinGroupGnu,
+    kArgpxHidden_BuiltinGroupUnix,
+    kArgpxHidden_BuiltinGroupCount,
+};
+
+extern struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount];
+
+#define ARGPX_BUILTIN_GROUP_GNU argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
+#define ARGPX_BUILTIN_GROUP_UNIX argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
+
+/*
+    public functions
+ */
+
 char *ArgpxStatusToString(enum ArgpxStatus status);
-struct ArgpxResult *ArgpxMain(int argc, int last_arg, char *argv[], struct ArgpxFlagGroup *groups, int group_count,
-    struct ArgpxFlag *opts, int opt_count, void (*ErrorCallback)(struct ArgpxResult *));
+struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], int group_count,
+    struct ArgpxFlagGroup groups[static group_count], int opt_count, struct ArgpxFlag opts[static opt_count],
+    void (*ErrorCallback)(struct ArgpxResult *));
 
 #endif

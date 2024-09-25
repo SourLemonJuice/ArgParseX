@@ -38,24 +38,14 @@ int main(int argc, char *argv[])
     bool test_bool2 = false;
 
     struct ArgpxFlagGroup group[] = {
-        {
-            .attribute = ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG | ARGPX_ATTR_PARAM_DISABLE_ARG,
-            .prefix = "--",
-            .assigner = "=",
-            .delimiter = ",",
-        },
+        ARGPX_BUILTIN_GROUP_GNU,
         {
             .attribute = 0,
             .prefix = "++",
             .assigner = "~",
             .delimiter = "-",
         },
-        {
-            .attribute = ARGPX_ATTR_COMPOSABLE,
-            .prefix = "-",
-            .assigner = "=",
-            .delimiter = ",",
-        },
+        ARGPX_BUILTIN_GROUP_UNIX,
         {
             .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_COMPOSABLE_NEED_PREFIX,
             .prefix = "/",
@@ -119,8 +109,8 @@ int main(int argc, char *argv[])
         },
     };
 
-    struct ArgpxResult *res = ArgpxMain(argc, 1, argv, group, sizeof(group) / sizeof(struct ArgpxFlagGroup), ArgpxFlag,
-        sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag), Error_);
+    struct ArgpxResult *res = ArgpxMain(argc, 1, argv, sizeof(group) / sizeof(struct ArgpxFlagGroup), group,
+        sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag), ArgpxFlag, Error_);
 
     printf("test_str group 0: %s, %s\n", test_str1, test_str2);
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);
@@ -130,9 +120,8 @@ int main(int argc, char *argv[])
     printf("-a: %s\n", BoolToString_(test_bool2));
 
     printf("==== command parameters ====\n");
-    for (int i = 0; i < res->params_count; i++) {
+    for (int i = 0; i < res->params_count; i++)
         printf("%s\n", res->params[i]);
-    }
 
     return 0;
 }

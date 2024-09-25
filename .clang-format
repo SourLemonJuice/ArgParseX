@@ -3,7 +3,7 @@ BasedOnStyle: Microsoft
 IndentWidth: 4
 UseTab: Never
 LineEnding: DeriveLF
-MaxEmptyLinesToKeep: 2 # for me, 2 empty lines were so common
+MaxEmptyLinesToKeep: 1
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: false
