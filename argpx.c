@@ -187,12 +187,14 @@ static void StringNumberToVariable_(char *source_str, int number, enum ArgpxVarT
     switch (type) {
     case kArgpxVarString:
         *ptr = value_str;
-        break;
+        return;
     default:
         // TODO implement other types
         *ptr = NULL;
         break;
     }
+
+    free(value_str);
 }
 
 enum ParamPartitionMode_ {
@@ -209,6 +211,11 @@ static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ da
 {
     enum ParamPartitionMode_ mode;
 
+    // TODO
+    // we can't just use strstr(), because this:
+    // cmd /win1=str1/win2=str3,str4
+    // then function will think /win1 is partitioned by delimiter
+    // but with the advent of the SingleParam mode, it's doesn't to be a problem anymore?
     char *delim_ptr = strnstr_(param, group_ptr->delimiter, param_range_len);
     if (delim_ptr == NULL) {
         if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ARG) != 0)
@@ -386,8 +393,6 @@ static bool ShouldFlagTypeHaveParam_(
     Set max_name_len to <= 0 to disable it
 
     If "shortest" is true, then shortest matching flag name and ignore tail
-
-    TODO this function parameter is so long
  */
 static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
