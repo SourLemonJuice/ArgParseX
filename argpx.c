@@ -126,6 +126,8 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Detected parameter partition mode is Arg(argument), but for some reason, unavailable";
     case kArgpxStatusFlagParamDeficiency:
         return "The flag gets insufficient parameters";
+    case kArgpxStatusGroupConfigEmptyString:
+        return "One or more empty string in group configs are invalid";
     }
 
     return NULL;
@@ -429,11 +431,15 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
     return final_conf_ptr;
 }
 
+/*
+    Unlike composable mode, independent mode need to know the exact length of the flag name.
+    So it must determine in advance if the assignment symbol exist
+ */
 static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1])
 {
     char *arg = data->args[data->arg_idx];
-    char *assigner_ptr = strstr(arg, ca->grp->assigner);
     char *name_start = arg + ca->grp_prefix_len;
+    char *assigner_ptr = strstr(name_start, ca->grp->assigner);
     int name_len;
     if (assigner_ptr != NULL)
         name_len = assigner_ptr - name_start;
@@ -555,6 +561,8 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
     If ErrorCallback is NULL then use exit(EXIT_FAILURE),
     if is a function then need accept a result structure, this should help
 
+    The result struct ArgpxResult needs to be freed up manually
+
     TODO I don't like this parameter style
  */
 struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], int group_count,
@@ -562,7 +570,7 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], i
     void (*ErrorCallback)(struct ArgpxResult *))
 {
     struct UnifiedData_ data = {
-        .res = &(struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = argc, .argv = argv},
+        .res = malloc(sizeof(struct ArgpxResult)),
         .ErrorCallback = ErrorCallback,
         .arg_c = argc,
         .args = argv,
@@ -572,6 +580,10 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], i
         .conf_c = opt_count,
         .confs = opts,
     };
+
+    if (data.res == NULL)
+        ArgpxExit_(&data, kArgpxStatusFailure);
+    *data.res = (struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = argc, .argv = argv};
 
     for (; data.arg_idx < data.arg_c == true; data.arg_idx++) {
         // update index record
@@ -590,12 +602,15 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], i
         ca.grp_assigner_len = strlen(ca.grp->assigner);
         ca.grp_delimiter_len = strlen(ca.grp->delimiter);
 
+        // empty string check
+        if (ca.grp_assigner_len == 0 or ca.grp_delimiter_len == 0)
+            ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
+
         if ((ca.grp->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
             ParseArgumentComposable_(&data, &ca);
         else
             ParseArgumentIndependent_(&data, &ca);
     }
 
-    // TODO find a way to free those malloc()
     return data.res;
 }

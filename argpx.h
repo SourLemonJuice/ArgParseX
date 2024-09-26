@@ -25,6 +25,7 @@ enum ArgpxStatus {
     kArgpxStatusParamDisallowDelimiter,
     kArgpxStatusParamDisallowArg,
     kArgpxStatusFlagParamDeficiency,
+    kArgpxStatusGroupConfigEmptyString,
 };
 
 enum ArgpxActionType {
@@ -43,6 +44,7 @@ enum ArgpxActionType {
 };
 
 enum ArgpxVarType {
+    // string type will return a manually alloced full string(have \0)
     kArgpxVarString,
     // TODO
     kArgpxVarInt,
@@ -62,16 +64,17 @@ enum ArgpxVarType {
 #define ARGPX_ATTR_COMPOSABLE 0b1 << 5
 #define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 6
 
-// TODO unify the meaning of '\0'
 struct ArgpxFlagGroup {
     // all group attribute
     uint16_t attribute;
-    // prefix of flag, like the "--" of "--flag". it's a string.
-    // all group prefixes cannot be duplicated, including “”(single \0) also
+    // prefix of flag, like the "--" of "--flag". it's a string
+    // all group prefixes cannot be duplicated, including ""(single \0) also
     char *prefix;
-    // parameter assignment symbol(string)
+    // flag parameter assignment symbol(string)
+    // the empty string: ""(single \0), is an error
     char *assigner;
-    // parameter delimiter(string)
+    // flag parameter delimiter(string)
+    // the empty string: ""(single \0), is an error
     char *delimiter;
 };
 
@@ -116,8 +119,8 @@ struct ArgpxHidden_OutcomeActionList {
 
 // in library source code it is called "conf/config"
 struct ArgpxFlag {
-    // It's an index not an id.
-    // emm... I trust the programer can figure out the array index in their hands.
+    // It's an index not an id
+    // emm... I trust the programer can figure out the array index in their hands
     // then there is no need for a new hash table here
     int group_idx;
     // name of flag, like the "flagName" of "--flagName"
