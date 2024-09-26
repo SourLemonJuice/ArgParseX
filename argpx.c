@@ -33,11 +33,13 @@ struct UnifiedData_ {
 };
 
 struct UnifiedGroupCache_ {
-    int grp_idx;
-    struct ArgpxFlagGroup *grp;
-    int grp_prefix_len;
-    int grp_assigner_len;
-    int grp_delimiter_len;
+    int idx;
+    struct ArgpxFlagGroup *ptr;
+    int prefix_len;
+    int assigner_len;
+    bool assigner_toggle;
+    int delimiter_len;
+    int delimiter_toggle;
 };
 
 struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount] = {
@@ -209,7 +211,7 @@ enum ParamPartitionMode_ {
     Use for ActionParamAny_()
  */
 static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ data[static 1],
-    struct ArgpxFlagGroup *group_ptr, struct ArgpxFlag conf_ptr[static 1], char *param, int param_range_len)
+    struct UnifiedGroupCache_ grp[static 1], struct ArgpxFlag conf_ptr[static 1], char *param, int param_range_len)
 {
     enum ParamPartitionMode_ mode;
 
@@ -218,13 +220,18 @@ static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ da
     // cmd /win1=str1/win2=str3,str4
     // then function will think /win1 is partitioned by delimiter
     // but with the advent of the SingleParam mode, it's doesn't to be a problem anymore?
-    char *delim_ptr = strnstr_(param, group_ptr->delimiter, param_range_len);
+    char *delim_ptr;
+    if (grp->delimiter_toggle == true)
+        delim_ptr = strnstr_(param, grp->ptr->delimiter, param_range_len);
+    else
+        delim_ptr = NULL;
+
     if (delim_ptr == NULL) {
-        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ARG) != 0)
+        if ((grp->ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ARG) != 0)
             ArgpxExit_(data, kArgpxStatusParamDisallowArg);
         mode = kPartitionByArguments_;
     } else {
-        if ((group_ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_DELIMITER) != 0)
+        if ((grp->ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_DELIMITER) != 0)
             ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
         mode = kPartitionByDelimiter_;
     }
@@ -237,11 +244,9 @@ static enum ParamPartitionMode_ DetectParamPartitionMode_(struct UnifiedData_ da
 
     If max_param_len <= 0, ignore it
  */
-static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1],
-    char *param_start_ptr, int max_param_len, bool allow_multi_arg)
+static void ActionParamAny_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
+    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len, bool allow_multi_arg)
 {
-    struct ArgpxFlagGroup *group_ptr = &data->groups[conf_ptr->group_idx];
-    char *delim = group_ptr->delimiter;
     int param_count;
 
     // for loop
@@ -265,7 +270,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
         unit_ptr = conf_ptr->action_load.param_multi.units;
 
         partition_mode =
-            DetectParamPartitionMode_(data, group_ptr, conf_ptr, final_param_start, strlen(final_param_start));
+            DetectParamPartitionMode_(data, grp, conf_ptr, final_param_start, strlen(final_param_start));
         // if caller doesn't want the parameter to be split by args, exit
         if (partition_mode == kPartitionByArguments_ and allow_multi_arg == false)
             ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
@@ -300,7 +305,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct ArgpxFlag
             else
                 final_param_start = next_delim_ptr + 1;
 
-            next_delim_ptr = strstr(final_param_start, delim);
+            next_delim_ptr = strstr(final_param_start, grp->ptr->delimiter);
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
                 if (var_idx + 1 < param_count)
@@ -396,7 +401,7 @@ static bool ShouldFlagTypeHaveParam_(
 
     If "shortest" is true, then shortest matching flag name and ignore tail
  */
-static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1],
+static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
 {
     struct ArgpxFlag *conf_ptr;
@@ -407,7 +412,7 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
 
     for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
         conf_ptr = &data->confs[conf_idx];
-        if (conf_ptr->group_idx != ca->grp_idx)
+        if (conf_ptr->group_idx != grp->idx)
             continue;
 
         conf_name_len = strlen(conf_ptr->name);
@@ -435,28 +440,33 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
     Unlike composable mode, independent mode need to know the exact length of the flag name.
     So it must determine in advance if the assignment symbol exist
  */
-static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1])
+static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1])
 {
     char *arg = data->args[data->arg_idx];
-    char *name_start = arg + ca->grp_prefix_len;
-    char *assigner_ptr = strstr(name_start, ca->grp->assigner);
+    char *name_start = arg + grp->prefix_len;
+
+    char *assigner_ptr;
+    if (grp->assigner_toggle == true)
+        assigner_ptr = strstr(name_start, grp->ptr->assigner);
+    else
+        assigner_ptr = NULL;
+
     int name_len;
     if (assigner_ptr != NULL)
         name_len = assigner_ptr - name_start;
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf_ptr = MatchingConf_(data, ca, name_start, name_len, false);
-
+    struct ArgpxFlag *conf_ptr = MatchingConf_(data, grp, name_start, name_len, false);
     // some check
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
-    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, ca->grp, conf_ptr) == false)
+    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, grp->ptr, conf_ptr) == false)
         ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
-    if (ShouldFlagTypeHaveParam_(data, ca->grp, conf_ptr) == true) {
-        if (assigner_ptr != NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+    if (ShouldFlagTypeHaveParam_(data, grp->ptr, conf_ptr) == true) {
+        if (assigner_ptr != NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
-        if (assigner_ptr == NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+        if (assigner_ptr == NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
     }
 
@@ -464,7 +474,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     switch (conf_ptr->action_type) {
     case kArgpxActionParamMulti:
     case kArgpxActionParamSingle:
-        ActionParamAny_(data, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0, true);
+        ActionParamAny_(data, grp, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0, true);
         break;
     case kArgpxActionSetBool:
         ActionSetBool_(data, conf_ptr);
@@ -475,16 +485,16 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     }
 }
 
-static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ ca[static 1])
+static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1])
 {
     char *arg = data->args[data->arg_idx];
 
     // believe that the prefix exists
-    char *base_ptr = arg + ca->grp_prefix_len;
-    int remaining_len = strlen(arg) - ca->grp_prefix_len;
+    char *base_ptr = arg + grp->prefix_len;
+    int remaining_len = strlen(arg) - grp->prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlag *conf = MatchingConf_(data, ca, base_ptr, 0, true);
+        struct ArgpxFlag *conf = MatchingConf_(data, grp, base_ptr, 0, true);
         if (conf == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         int name_len = strlen(conf->name);
@@ -493,8 +503,8 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
         // some windows style...
         // if group attribute not set, next_prefix will always be NULL
         char *next_prefix = NULL;
-        if ((ca->grp->attribute & ARGPX_ATTR_COMPOSABLE_NEED_PREFIX) != 0)
-            next_prefix = strstr(base_ptr, ca->grp->prefix);
+        if ((grp->ptr->attribute & ARGPX_ATTR_COMPOSABLE_NEED_PREFIX) != 0)
+            next_prefix = strstr(base_ptr, grp->ptr->prefix);
 
         // parameter stuff
         char *param_start = base_ptr + name_len;
@@ -505,15 +515,19 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
         case kArgpxActionParamMulti:
         case kArgpxActionParamSingle:
             // is the assigner exist?
-            assigner_exist = strncmp(base_ptr + name_len, ca->grp->assigner, ca->grp_assigner_len) == 0;
-            if (assigner_exist == true and ShouldFlagTypeHaveParam_(data, ca->grp, conf) == false)
+            if (grp->assigner_toggle == true)
+                assigner_exist = strncmp(base_ptr + name_len, grp->ptr->assigner, grp->assigner_len) == 0;
+            else
+                assigner_exist = false;
+
+            if (assigner_exist == true and ShouldFlagTypeHaveParam_(data, grp->ptr, conf) == false)
                 ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
-            if (assigner_exist == true and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+            if (assigner_exist == true and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
                 ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
 
             if (assigner_exist) {
-                param_start += ca->grp_assigner_len;
-                remaining_len -= ca->grp_assigner_len;
+                param_start += grp->assigner_len;
+                remaining_len -= grp->assigner_len;
             }
 
             // get parameter length
@@ -528,13 +542,13 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
                 param_start = NULL;
 
             // and do some check
-            if (param_start == NULL and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+            if (param_start == NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
                 ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
             if (param_start != NULL and assigner_exist == false
-                and (ca->grp->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
+                and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
                 ArgpxExit_(data, kArgpxStatusAssignmentDisallowTrailing);
 
-            ActionParamAny_(data, conf, param_start, param_len, remaining_len <= 0 ? true : false);
+            ActionParamAny_(data, grp, conf, param_start, param_len, remaining_len <= 0 ? true : false);
             break;
         case kArgpxActionSetBool:
             ActionSetBool_(data, conf);
@@ -549,10 +563,10 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
         if (next_prefix == NULL) {
             base_ptr += name_len + param_len;
             if (assigner_exist == true)
-                base_ptr += ca->grp_assigner_len;
+                base_ptr += grp->assigner_len;
         } else {
-            base_ptr = next_prefix + ca->grp_prefix_len;
-            remaining_len -= ca->grp_prefix_len;
+            base_ptr = next_prefix + grp->prefix_len;
+            remaining_len -= grp->prefix_len;
         }
     }
 }
@@ -590,26 +604,34 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], i
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
-        struct UnifiedGroupCache_ ca = {0};
-        ca.grp_idx = MatchingGroup_(&data);
-        if (ca.grp_idx < 0) {
+        struct UnifiedGroupCache_ grp = {0};
+        grp.idx = MatchingGroup_(&data);
+        if (grp.idx < 0) {
             AppendCommandParameter_(&data);
             continue;
         }
-        ca.grp = &data.groups[ca.grp_idx];
+        grp.ptr = &data.groups[grp.idx];
 
-        ca.grp_prefix_len = strlen(ca.grp->prefix);
-        ca.grp_assigner_len = strlen(ca.grp->assigner);
-        ca.grp_delimiter_len = strlen(ca.grp->delimiter);
+        grp.prefix_len = strlen(grp.ptr->prefix);
 
-        // empty string check
-        if (ca.grp_assigner_len == 0 or ca.grp_delimiter_len == 0)
+        // empty string checks
+        grp.assigner_toggle = grp.ptr->assigner != NULL ? true : false;
+        if (grp.assigner_toggle == true)
+            grp.assigner_len = strlen(grp.ptr->assigner);
+        if (grp.assigner_len == 0 and grp.assigner_toggle == true)
             ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
 
-        if ((ca.grp->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
-            ParseArgumentComposable_(&data, &ca);
+        grp.delimiter_toggle = grp.ptr->delimiter != NULL ? true : false;
+        if (grp.delimiter_toggle == true)
+            grp.delimiter_len = strlen(grp.ptr->delimiter);
+        if (grp.delimiter_len == 0 and grp.delimiter_toggle == true)
+            ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
+
+
+        if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
+            ParseArgumentComposable_(&data, &grp);
         else
-            ParseArgumentIndependent_(&data, &ca);
+            ParseArgumentIndependent_(&data, &grp);
     }
 
     return data.res;

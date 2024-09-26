@@ -71,9 +71,11 @@ struct ArgpxFlagGroup {
     // all group prefixes cannot be duplicated, including ""(single \0) also
     char *prefix;
     // flag parameter assignment symbol(string)
+    // NULL: disable
     // the empty string: ""(single \0), is an error
     char *assigner;
     // flag parameter delimiter(string)
+    // NULL: disable
     // the empty string: ""(single \0), is an error
     char *delimiter;
 };
