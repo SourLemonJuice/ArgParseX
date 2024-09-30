@@ -109,8 +109,16 @@ int main(int argc, char *argv[])
         },
     };
 
-    struct ArgpxResult *res = ArgpxMain(argc, 1, argv, sizeof(group) / sizeof(struct ArgpxFlagGroup), group,
-        sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag), ArgpxFlag, Error_);
+    struct ArgpxResult *res = ArgpxMain((struct ArgpxMainOption){
+        .argc = argc,
+        .argv = argv,
+        .argc_base = 1,
+        .groupc = sizeof(group) / sizeof(struct ArgpxFlagGroup),
+        .groupv = group,
+        .flagc = sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag),
+        .flagv = ArgpxFlag,
+        .ErrorCallback = Error_,
+    });
 
     printf("test_str group 0: %s, %s\n", test_str1, test_str2);
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);

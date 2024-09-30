@@ -160,12 +160,20 @@ extern struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGrou
 #define ARGPX_BUILTIN_GROUP_UNIX argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
 
 /*
-    public functions
+    The function parameter of ArgpxMain()
  */
+struct ArgpxMainOption {
+    int argc;
+    char **argv;
+    int argc_base;
+    int groupc;
+    struct ArgpxFlagGroup *groupv;
+    int flagc;
+    struct ArgpxFlag *flagv;
+    void (*ErrorCallback)(struct ArgpxResult *);
+};
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
-struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], int group_count,
-    struct ArgpxFlagGroup groups[static group_count], int opt_count, struct ArgpxFlag opts[static opt_count],
-    void (*ErrorCallback)(struct ArgpxResult *));
+struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func_params);
 
 #endif

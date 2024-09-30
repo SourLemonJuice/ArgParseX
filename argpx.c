@@ -269,8 +269,7 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct UnifiedGr
         param_count = conf_ptr->action_load.param_multi.count;
         unit_ptr = conf_ptr->action_load.param_multi.units;
 
-        partition_mode =
-            DetectParamPartitionMode_(data, grp, conf_ptr, final_param_start, strlen(final_param_start));
+        partition_mode = DetectParamPartitionMode_(data, grp, conf_ptr, final_param_start, strlen(final_param_start));
         // if caller doesn't want the parameter to be split by args, exit
         if (partition_mode == kPartitionByArguments_ and allow_multi_arg == false)
             ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
@@ -576,28 +575,24 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
     if is a function then need accept a result structure, this should help
 
     The result struct ArgpxResult needs to be freed up manually
-
-    TODO I don't like this parameter style
  */
-struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], int group_count,
-    struct ArgpxFlagGroup groups[static group_count], int opt_count, struct ArgpxFlag opts[static opt_count],
-    void (*ErrorCallback)(struct ArgpxResult *))
+struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
 {
     struct UnifiedData_ data = {
         .res = malloc(sizeof(struct ArgpxResult)),
-        .ErrorCallback = ErrorCallback,
-        .arg_c = argc,
-        .args = argv,
-        .arg_idx = arg_base,
-        .groups = groups,
-        .group_c = group_count,
-        .conf_c = opt_count,
-        .confs = opts,
+        .ErrorCallback = func.ErrorCallback,
+        .arg_c = func.argc,
+        .args = func.argv,
+        .arg_idx = func.argc_base,
+        .groups = func.groupv,
+        .group_c = func.groupc,
+        .conf_c = func.flagc,
+        .confs = func.flagv,
     };
 
     if (data.res == NULL)
         ArgpxExit_(&data, kArgpxStatusFailure);
-    *data.res = (struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = argc, .argv = argv};
+    *data.res = (struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = data.arg_c, .argv = data.args};
 
     for (; data.arg_idx < data.arg_c == true; data.arg_idx++) {
         // update index record
@@ -626,7 +621,6 @@ struct ArgpxResult *ArgpxMain(int argc, int arg_base, char *argv[static argc], i
             grp.delimiter_len = strlen(grp.ptr->delimiter);
         if (grp.delimiter_len == 0 and grp.delimiter_toggle == true)
             ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
-
 
         if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
             ParseArgumentComposable_(&data, &grp);
