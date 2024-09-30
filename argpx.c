@@ -403,23 +403,31 @@ static bool ShouldFlagTypeHaveParam_(
 static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
 {
-    struct ArgpxFlag *conf_ptr;
-    int conf_name_len;
+    bool tail_limit = max_name_len <= 0 ? false : true;
     // we may need to find the longest match
     struct ArgpxFlag *final_conf_ptr = NULL;
     int final_name_len = 0;
 
     for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
-        conf_ptr = &data->confs[conf_idx];
+        struct ArgpxFlag *conf_ptr = &data->confs[conf_idx];
         if (conf_ptr->group_idx != grp->idx)
             continue;
 
-        conf_name_len = strlen(conf_ptr->name);
-        if (max_name_len < conf_name_len and max_name_len > 0)
+        int conf_name_len = strlen(conf_ptr->name);
+        if (tail_limit == true and conf_name_len > max_name_len)
             continue;
 
+        int match_len;
+        if (shortest != true) {
+            match_len = tail_limit == true ? max_name_len : strlen(name_start);
+            if (match_len != conf_name_len)
+                continue;
+        } else {
+            match_len = conf_name_len;
+        }
+
         // matching name
-        if (strncmp(name_start, conf_ptr->name, conf_name_len) != 0)
+        if (strncmp(name_start, conf_ptr->name, match_len) != 0)
             continue;
 
         // if matched, update max length record
