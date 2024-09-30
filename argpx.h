@@ -7,9 +7,9 @@
 
 // the interface versions
 #define ARGPX_VERSION_MAJOR 0
-#define ARGPX_VERSION_MINOR 2
+#define ARGPX_VERSION_MINOR 3
 // a continuously growing integer, +1 for each release
-#define ARGPX_VERSION_REVISION 2
+#define ARGPX_VERSION_REVISION 3
 
 // details are in ArgpxStatusToString()
 enum ArgpxStatus {
