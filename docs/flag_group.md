@@ -10,6 +10,12 @@
 
 组不会定义获取参数后的 action，这是每个标志自己的事
 
+## 定义方式
+
+文档是个放细节的地方，明显的事情还是懒得写了（咕咕咕）
+
+参见 [example/test.c](../example/test.c) 中关于 `struct ArgpxFlagGroup` 的部分
+
 ## 赋值方式/Assignment
 
 宏前缀：`ARGPX_ATTR_ASSIGNMENT`
