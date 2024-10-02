@@ -128,8 +128,8 @@ int main(int argc, char *argv[])
     printf("-a: %s\n", BoolToString_(test_bool2));
 
     printf("==== command parameters ====\n");
-    for (int i = 0; i < res->params_count; i++)
-        printf("%s\n", res->params[i]);
+    for (int i = 0; i < res->param_count; i++)
+        printf("%s\n", res->paramv[i]);
 
     return 0;
 }

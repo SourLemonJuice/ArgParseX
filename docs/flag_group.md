@@ -59,3 +59,29 @@
 
 另外这里的参数仍然尊重分割方式：`/Astr1,str2/B`。\
 但如果分割方式为 arg 比如 `/Astr1 str2/B`，那第二个 arg(`str2/B`) 会被视为一个整体当成参数
+
+## 内置组/Built-in group
+
+ArgParseX 打算提供一些常见的组配置作为默认选项，不过如果配置与起对应的选项风格的细节对不上可不好。\
+所以这里目前只有这位开发者熟悉的：`GNU` 与 `Unix`
+
+它们分别以这样的方式提供：
+
+|风格名称|宏|例子|
+|--|--|--|
+|GNU|`ARGPX_BUILTIN_GROUP_GNU`|`--test=param1,param2`|
+|Unix|`ARGPX_BUILTIN_GROUP_UNIX`|`-A -B=str1,str2 -ABstr1,str2`|
+
+它们都会被扩展为一个 `struct ArgpxFlagGroup` 结构体（不是指针），这是我所想的使用方法：
+
+```c
+struct ArgpxFlagGroup group[] = {
+    ARGPX_BUILTIN_GROUP_GNU,
+    {
+        .attribute = 0,
+        .prefix = "else",
+        .assigner = NULL,
+        .delimiter = NULL,
+    },
+};
+```

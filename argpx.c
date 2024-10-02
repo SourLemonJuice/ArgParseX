@@ -157,11 +157,11 @@ static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
     char *arg = data->args[data->arg_idx];
     struct ArgpxResult *res = data->res;
 
-    res->params_count += 1;
+    res->param_count += 1;
     size_t this_arg_size = strlen(arg) + 1;
 
-    res->params = realloc(res->params, sizeof(char * [res->params_count]));
-    res->params[res->params_count - 1] = arg;
+    res->paramv = realloc(res->paramv, sizeof(char * [res->param_count]));
+    res->paramv[res->param_count - 1] = arg;
 }
 
 /*

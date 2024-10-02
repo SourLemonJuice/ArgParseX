@@ -139,9 +139,9 @@ struct ArgpxResult {
     // pretty much the same as current_argv_idx, but it's directly useable string
     char *current_argv_ptr;
     // parameter here is non-flag command "argument"
-    int params_count;
+    int param_count;
     // an array of command parameters
-    char **params;
+    char **paramv;
     // the command argc
     int argc;
     // the command argv
