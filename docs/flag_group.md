@@ -2,7 +2,7 @@
 
 标志组是所有标志的最上层的抽象，它类似于不同的命令行风格的配置文件
 
-它定义了每个标志的前缀、赋值符号、分隔符以及一些特殊属性（暂定为 `uint16_t flag;`）。\
+它定义了每个标志的前缀、赋值符号、分隔符以及一些特殊属性（大小为 `uint16_t attribute`）。\
 设想中，配合属性组应该能描述出大多常见的甚至近乎所有的命令行参数风格和行为。\
 当然目前不是如此，它还需要实现很多的属性才能做到这一点
 
@@ -10,12 +10,52 @@
 
 组不会定义获取参数后的 action，这是每个标志自己的事
 
-## 可组合化/Groupable
+## 赋值方式/Assignment
 
-这是个奇怪的问题，它表示了 Unix 命令中类似 `-abc` 的行为。\
-但问题是，要怎么约束它们，这是个通用的库，我还没想好
+宏前缀：`ARGPX_ATTR_ASSIGNMENT`
 
-目前它作为一个组的属性 `ARGPX_GROUP_FLAG_GROUPABLE` 提供，并由内部函数 `ParseArgumentGroupable_` 区别于普通解析函数进行处理
+默认情况下会启用所有的复制方式，并用组属性的方式分别禁用：
 
-现在的默认行为是如果遇到了有参数的标志，则会先尊重其他属性意愿判断是否合规。如果不需要分隔符就会将当前 argument 的剩余部分当作参数解析（过程中也会尊重分隔符）。
-并且如果该标志是标志字符串中的最后一个，那么则使用下一个 argument 作为参数
+|含义|宏名称|例子|检查错误返回码|
+|--|--|--|--|
+|禁用赋值符号|`ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER`|`--test=param`|`kArgpxStatusAssignmentDisallowAssigner`|
+|禁用尾随字符串（仅可组合模式会使用）|`ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING`|`-Tparam`|`kArgpxStatusAssignmentDisallowTrailing`|
+|禁用使用下一个 arg 作为参数|`ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG`|`-test param`|`kArgpxStatusAssignmentDisallowArg`|
+
+## 参数分割方式/Parameter partition
+
+宏前缀：`ARGPX_ATTR_PARAM`
+
+同样的，默认会启用所有方式，并使用组属性分别禁用：
+
+|含义|宏名称|例子|检查错误返回码|
+|--|--|--|--|
+|禁止使用分隔符分割|`ARGPX_ATTR_PARAM_DISABLE_DELIMITER`|`--test=param1,param2`|`kArgpxStatusParamDisallowDelimiter`|
+|禁止使用 arg 分割|`ARGPX_ATTR_PARAM_DISABLE_ARG`|`--test=param1 param2`|`kArgpxStatusParamDisallowArg`|
+
+之前所说的所有赋值方式都会尊重分割方式的配置\
+（特指尾随字符串）（这是可以被允许的： `--test=param1 param2`）
+
+## 可组合化/Composable
+
+它表示了 Unix 命令中类似 `-abc` 的行为
+
+目前它作为一个组属性 `ARGPX_ATTR_COMPOSABLE` 提供
+
+默认情况下如果遇到了有参数的标志，则会按照其它组属性的意愿判断是否合规。\
+如果标志名称后有剩余的字符串，则会根据 `ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING` 的存在与否来决定将其作为参数解析。\
+反之则抛出对应的返回码
+
+### 需要前缀/Need prefix
+
+可组合化模式中有一个特殊的附加属性：需要前缀（`ARGPX_ATTR_COMPOSABLE_NEED_PREFIX`）。\
+它需要可组合化已经启用的情况下才会被尊重，但不然呢，我为什么想说这个
+
+该模式用来模仿某些 DOS/Windows 风格的参数。\
+也就是：`/A/B/C`
+
+仅此而已，不过还有些参数范围上的小事情。\
+假设现在有一个 arg 长这样：`/Astr/B`，那么只有 str 是 `/A` 的参数，而不是 str/B
+
+另外这里的参数仍然尊重分割方式：`/Astr1,str2/B`。\
+但如果分割方式为 arg 比如 `/Astr1 str2/B`，那第二个 arg(`str2/B`) 会被视为一个整体当成参数

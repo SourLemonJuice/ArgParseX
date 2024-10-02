@@ -24,7 +24,7 @@ struct UnifiedData_ {
     int arg_idx;
     // groups count
     int group_c;
-    // pointer to groups array.
+    // pointer to groups array
     struct ArgpxFlagGroup *groups;
     // configs count
     int conf_c;
@@ -42,6 +42,7 @@ struct UnifiedGroupCache_ {
     int delimiter_toggle;
 };
 
+// it would be ugly to write it directly to macro
 struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount] = {
     [kArgpxHidden_BuiltinGroupGnu] =
         {
