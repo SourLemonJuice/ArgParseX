@@ -109,16 +109,6 @@ struct ArgpxHidden_OutcomeGetMultiParamArray {
     struct ArgpxParamUnit *units;
 };
 
-struct ArgpxHidden_OutcomeActionList {
-    union {
-        struct ArgpxParamUnit param_single;
-        struct ArgpxHidden_OutcomeGetMultiParamArray param_multi;
-        struct ArgpxHidden_OutcomeSetMemory set_memory;
-        struct ArgpxHidden_OutcomeSetBool set_bool;
-        struct ArgpxHidden_OutcomeSetInt set_int;
-    };
-};
-
 // in library source code it is called "conf/config"
 struct ArgpxFlag {
     // It's an index not an id
@@ -129,7 +119,13 @@ struct ArgpxFlag {
     char *name;
     // one flag only have one action, but one action may need to define mutiple structures.
     enum ArgpxActionType action_type;
-    struct ArgpxHidden_OutcomeActionList action_load;
+    union {
+        struct ArgpxParamUnit param_single;
+        struct ArgpxHidden_OutcomeGetMultiParamArray param_multi;
+        struct ArgpxHidden_OutcomeSetMemory set_memory;
+        struct ArgpxHidden_OutcomeSetBool set_bool;
+        struct ArgpxHidden_OutcomeSetInt set_int;
+    } action_load;
 };
 
 struct ArgpxResult {
