@@ -331,11 +331,29 @@ static void ActionParamAny_(struct UnifiedData_ data[static 1], struct UnifiedGr
 }
 
 /*
-    Invert the bool value of "toggle_ptr" in flag config
+    kArgpxActionSetMemory
+ */
+static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+{
+    struct ArgpxHidden_OutcomeSetMemory *ptr = &conf_ptr->action_load.set_memory;
+    memcpy(ptr->target_ptr, ptr->source_ptr, ptr->size);
+}
+
+/*
+    kArgpxActionSetBool
  */
 static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     struct ArgpxHidden_OutcomeSetBool *ptr = &conf_ptr->action_load.set_bool;
+    *ptr->target_ptr = ptr->source;
+}
+
+/*
+    kArgpxActionSetInt
+ */
+static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+{
+    struct ArgpxHidden_OutcomeSetInt *ptr = &conf_ptr->action_load.set_int;
     *ptr->target_ptr = ptr->source;
 }
 
@@ -374,7 +392,9 @@ static bool ShouldFlagTypeHaveParam_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     switch (conf_ptr->action_type) {
+    case kArgpxActionSetMemory:
     case kArgpxActionSetBool:
+    case kArgpxActionSetInt:
         return false;
     case kArgpxActionParamMulti:
     case kArgpxActionParamSingle:
@@ -383,7 +403,7 @@ static bool ShouldFlagTypeHaveParam_(
         ArgpxExit_(data, kArgpxStatusActionUnavailable);
     }
 
-    return false;
+    return false; // make compiler happy... noreturn is baster then this
 }
 
 /*
@@ -484,8 +504,14 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     case kArgpxActionParamSingle:
         ActionParamAny_(data, grp, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0, true);
         break;
+    case kArgpxActionSetMemory:
+        ActionSetMemory_(data, conf_ptr);
+        break;
     case kArgpxActionSetBool:
         ActionSetBool_(data, conf_ptr);
+        break;
+    case kArgpxActionSetInt:
+        ActionSetInt_(data, conf_ptr);
         break;
     default:
         ArgpxExit_(data, kArgpxStatusActionUnavailable);
@@ -558,8 +584,14 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
 
             ActionParamAny_(data, grp, conf, param_start, param_len, remaining_len <= 0 ? true : false);
             break;
+        case kArgpxActionSetMemory:
+            ActionSetMemory_(data, conf);
+            break;
         case kArgpxActionSetBool:
             ActionSetBool_(data, conf);
+            break;
+        case kArgpxActionSetInt:
+            ActionSetInt_(data, conf);
             break;
         default:
             ArgpxExit_(data, kArgpxStatusActionUnavailable);

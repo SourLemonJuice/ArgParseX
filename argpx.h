@@ -35,11 +35,12 @@ enum ArgpxActionType {
     kArgpxActionParamSingle,
     // TODO get flag parameters raw string array
     kArgpxActionParamList,
-    // TODO If need some custom structure or the other data type
+    // if need some custom structure or the other data type
     kArgpxActionSetMemory,
-    // The most common operation on the command line
+    // the most common operation on the command line
     kArgpxActionSetBool,
-    // TODO Maybe enum need it
+    // like SetBool, maybe enum need it.
+    // note: this action just uses the "int" type
     kArgpxActionSetInt,
 };
 
@@ -99,8 +100,8 @@ struct ArgpxHidden_OutcomeSetBool {
 };
 
 struct ArgpxHidden_OutcomeSetInt {
-    uintmax_t source;
-    uintmax_t *target_ptr;
+    int source;
+    int *target_ptr;
 };
 
 struct ArgpxHidden_OutcomeGetMultiParamArray {

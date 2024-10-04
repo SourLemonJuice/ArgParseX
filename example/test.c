@@ -37,6 +37,8 @@ int main(int argc, char *argv[])
     bool test_bool = false;
     bool test_bool2 = false;
 
+    int test_int = 0;
+
     struct ArgpxFlagGroup group[] = {
         ARGPX_BUILTIN_GROUP_GNU,
         {
@@ -68,9 +70,15 @@ int main(int argc, char *argv[])
         },
         {
             .group_idx = 0,
-            .name = "bool",
+            .name = "setbool",
             .action_type = kArgpxActionSetBool,
             .action_load.set_bool = {.source = true, .target_ptr = &test_bool},
+        },
+        {
+            .group_idx = 0,
+            .name = "setint",
+            .action_type = kArgpxActionSetInt,
+            .action_load.set_int = {.source = 123, .target_ptr = &test_int},
         },
         {
             .group_idx = 1,
@@ -124,8 +132,9 @@ int main(int argc, char *argv[])
     printf("test_str group 1: %s, %s\n", test_str21, test_str22);
     printf("test_str group 1: %s\n", test_str31);
     printf("/win1 and /win2: %s, %s\n", test_win_str1, test_win_str2);
-    printf("--bool: %s\n", BoolToString_(test_bool));
+    printf("--setbool: %s\n", BoolToString_(test_bool));
     printf("-a: %s\n", BoolToString_(test_bool2));
+    printf("--setint: %d\n", test_int);
 
     printf("==== command parameters ====\n");
     for (int i = 0; i < res->param_count; i++)
