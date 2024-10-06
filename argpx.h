@@ -88,6 +88,17 @@ struct ArgpxParamUnit {
     void *ptr;
 };
 
+struct ArgpxHidden_OutcomeParamMulti {
+    int count;
+    // format units array
+    struct ArgpxParamUnit *units;
+};
+
+struct ArgpxHidden_OutcomeParamList {
+    int *count;
+    char ***params; // pointer to a string list...
+};
+
 struct ArgpxHidden_OutcomeSetMemory {
     size_t size;
     void *source_ptr;
@@ -104,12 +115,6 @@ struct ArgpxHidden_OutcomeSetInt {
     int *target_ptr;
 };
 
-struct ArgpxHidden_OutcomeGetMultiParamArray {
-    int count;
-    // format units array
-    struct ArgpxParamUnit *units;
-};
-
 // in library source code it is called "conf/config"
 struct ArgpxFlag {
     // It's an index not an id
@@ -122,7 +127,8 @@ struct ArgpxFlag {
     enum ArgpxActionType action_type;
     union {
         struct ArgpxParamUnit param_single;
-        struct ArgpxHidden_OutcomeGetMultiParamArray param_multi;
+        struct ArgpxHidden_OutcomeParamMulti param_multi;
+        struct ArgpxHidden_OutcomeParamList param_list;
         struct ArgpxHidden_OutcomeSetMemory set_memory;
         struct ArgpxHidden_OutcomeSetBool set_bool;
         struct ArgpxHidden_OutcomeSetInt set_int;

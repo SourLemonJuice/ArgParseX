@@ -39,6 +39,9 @@ int main(int argc, char *argv[])
 
     int test_int = 0;
 
+    int test_param_list_count = 0;
+    char **test_param_list = NULL;
+
     struct ArgpxFlagGroup group[] = {
         ARGPX_BUILTIN_GROUP_GNU,
         {
@@ -92,6 +95,15 @@ int main(int argc, char *argv[])
                 },
         },
         {
+            .group_idx = 0,
+            .name = "paramlist",
+            .action_type = kArgpxActionParamList,
+            .action_load.param_list = {
+                .count = &test_param_list_count,
+                .params = &test_param_list,
+            }
+        },
+        {
             .group_idx = 3,
             .name = "win1",
             .action_type = kArgpxActionParamSingle,
@@ -135,6 +147,9 @@ int main(int argc, char *argv[])
     printf("--setbool: %s\n", BoolToString_(test_bool));
     printf("-a: %s\n", BoolToString_(test_bool2));
     printf("--setint: %d\n", test_int);
+
+    for (int i = 0; i < test_param_list_count; i++)
+        printf("paramlist index: %d: %s\n", i, test_param_list[i]);
 
     printf("==== command parameters ====\n");
     for (int i = 0; i < res->param_count; i++)
