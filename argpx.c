@@ -170,7 +170,7 @@ static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
 
     The "number" is similar to strncmp()'s "n"
  */
-static void ApplyParamUnit_(char *source_str, int number, enum ArgpxVarType type, void **ptr)
+static void StringToType_(char *source_str, int number, enum ArgpxVarType type, void **ptr)
 {
     // prepare a separate string
     int str_len = strlen(source_str);
@@ -263,7 +263,6 @@ static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct Uni
 
     enum ParamPartitionMode_ partition_mode;
 
-    bool multi_param = ShouldTypeMultiParam_(data, conf_ptr);
     switch (conf_ptr->action_type) {
     case kArgpxActionParamSingle:
         param_count = 1;
@@ -303,7 +302,7 @@ static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct Uni
             else
                 final_param_start = next_delim_ptr + 1;
 
-            next_delim_ptr = strstr(final_param_start, grp->ptr->delimiter); // strstr()? where is the limit
+            next_delim_ptr = strstr(final_param_start, grp->ptr->delimiter); // TODO strstr()? where is the limit
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
                 if (param_idx + 1 < param_count)
@@ -324,29 +323,36 @@ static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct Uni
             param_len = max_param_len;
 
         // i know it's confusing...
-        ApplyParamUnit_(final_param_start, param_len, unit_ptr[param_idx].type,
+        StringToType_(final_param_start, param_len, unit_ptr[param_idx].type,
             unit_ptr[param_idx].ptr /* passing secondary pointer */);
     }
 }
 
 /*
-    TODO
-    "realloc(): invalid next size" when list size is greater then 4
+    Append a new item into a ParamList action. It can only be attached to the tail.
+    The last_idx acts as both the counter(index + 1) and new item index
  */
 static void AppendParamList_(
     struct ArgpxHidden_OutcomeParamList outcome[static 1], int last_idx, char *str, int str_len)
 {
     *outcome->count = last_idx + 1;
 
-    char ***list = outcome->params;
-    *list = realloc(*list, last_idx + 1);
+    char **list;
+    size_t list_size = sizeof(char *[last_idx + 1]);
 
-    char *new_str;
-    new_str = malloc(sizeof(char[str_len + 1]));
+    if (last_idx == 0) {
+        list = malloc(list_size);
+    } else {
+        list = realloc(*outcome->params, list_size);
+    }
+
+    char *new_str = malloc(sizeof(char[str_len + 1]));
     memcpy(new_str, str, str_len);
     new_str[str_len] = '\0';
 
-    (*list)[last_idx] = new_str;
+    list[last_idx] = new_str;
+
+    *outcome->params = list;
 }
 
 static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
@@ -367,10 +373,11 @@ static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedG
 
         AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len);
 
+        int used_len = param_len + grp->delimiter_len;
         // each parameter will have a delimiter, expect the last one
         // it will reduce remaining_len to a negative number, then no next loop
-        remaining_len -= param_len + grp->delimiter_len;
-        param_now += param_len + grp->delimiter_len;
+        remaining_len -= used_len;
+        param_now += used_len;
     }
 }
 
