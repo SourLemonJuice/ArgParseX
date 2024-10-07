@@ -115,7 +115,7 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Flag action type unavailable. Not implemented or configuration conflict";
     case kArgpxStatusNoArgAvailableToShifting:
         return "There is no more argument available to get";
-    case kArgpxStatusFlagParamNoNeeded:
+    case kArgpxStatusParamNoNeeded:
         return "This flag don't need parameter, but the input seems to be assigning a value";
     case kArgpxStatusAssignmentDisallowAssigner:
         return "Detected assignment mode is Assigner, but for some reason, unavailable";
@@ -127,10 +127,12 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Detected parameter partition mode is Delimiter, but for some reason, unavailable";
     case kArgpxStatusParamDisallowArg:
         return "Detected parameter partition mode is Arg(argument), but for some reason, unavailable";
-    case kArgpxStatusFlagParamDeficiency:
+    case kArgpxStatusParamDeficiency:
         return "The flag gets insufficient parameters";
     case kArgpxStatusGroupConfigEmptyString:
         return "One or more empty string in group configs are invalid";
+    case kArgpxStatusParamExtraDelimiterAtTail:
+        return "Have an extra delimiter at the tail of flag parameters range"; // TODO may can merged with others
     }
 
     return NULL;
@@ -243,6 +245,8 @@ static bool DetectParamPartitionMode_(struct UnifiedData_ data[static 1],
     If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
 
     If max_param_len <= 0, ignore it
+
+    TODO --test=testStr1,testStr2 is brocken
  */
 static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len, bool allow_multi_arg)
@@ -306,7 +310,7 @@ static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct Uni
             if (next_delim_ptr == NULL) {
                 // if this is not the last parameter, the format is incorrect
                 if (param_idx + 1 < param_count)
-                    ArgpxExit_(data, kArgpxStatusFlagParamDeficiency);
+                    ArgpxExit_(data, kArgpxStatusParamDeficiency);
                 param_len = strlen(final_param_start);
             } else {
                 param_len = next_delim_ptr - final_param_start;
@@ -315,7 +319,7 @@ static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct Uni
         }
 
         if (param_len == 0)
-            ArgpxExit_(data, kArgpxStatusFlagParamDeficiency);
+            ArgpxExit_(data, kArgpxStatusParamDeficiency);
 
         // add a limit
         // TODO ???
@@ -366,10 +370,14 @@ static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedG
         delimiter_ptr = strnstr_(param_now, grp->ptr->delimiter, remaining_len);
 
         int param_len;
-        if (delimiter_ptr != NULL)
-            param_len = delimiter_ptr - param_now;
-        else
+        if (delimiter_ptr == NULL) {
             param_len = remaining_len;
+        } else {
+            param_len = delimiter_ptr - param_now;
+            // delimiter shouldn't exist at the last parameter's tail
+            if (param_len + grp->delimiter_len >= remaining_len)
+                ArgpxExit_(data, kArgpxStatusParamExtraDelimiterAtTail);
+        }
 
         AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len);
 
@@ -542,7 +550,7 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
     if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, grp->ptr, conf_ptr) == false)
-        ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
+        ArgpxExit_(data, kArgpxStatusParamNoNeeded);
     if (ShouldFlagTypeHaveParam_(data, grp->ptr, conf_ptr) == true) {
         if (assigner_ptr != NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
@@ -610,7 +618,7 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
                 assigner_exist = false;
 
             if (assigner_exist == true and ShouldFlagTypeHaveParam_(data, grp->ptr, conf) == false)
-                ArgpxExit_(data, kArgpxStatusFlagParamNoNeeded);
+                ArgpxExit_(data, kArgpxStatusParamNoNeeded);
             if (assigner_exist == true and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
                 ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
 

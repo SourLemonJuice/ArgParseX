@@ -18,14 +18,15 @@ enum ArgpxStatus {
     kArgpxStatusUnknownFlag,
     kArgpxStatusActionUnavailable,
     kArgpxStatusNoArgAvailableToShifting,
-    kArgpxStatusFlagParamNoNeeded,
+    kArgpxStatusParamNoNeeded,
     kArgpxStatusAssignmentDisallowAssigner,
     kArgpxStatusAssignmentDisallowTrailing,
     kArgpxStatusAssignmentDisallowArg,
     kArgpxStatusParamDisallowDelimiter,
     kArgpxStatusParamDisallowArg,
-    kArgpxStatusFlagParamDeficiency,
+    kArgpxStatusParamDeficiency,
     kArgpxStatusGroupConfigEmptyString,
+    kArgpxStatusParamExtraDelimiterAtTail,
 };
 
 enum ArgpxActionType {
@@ -33,7 +34,8 @@ enum ArgpxActionType {
     kArgpxActionParamMulti,
     // get a single flag parameter, but can still convert it's data type
     kArgpxActionParamSingle,
-    // TODO get flag parameters raw string array
+    // get flag parameters raw string array, the array size is dynamic
+    // ParamList action only can uses the Delimiter but can't partition by arg
     kArgpxActionParamList,
     // if need some custom structure or the other data type
     kArgpxActionSetMemory,
