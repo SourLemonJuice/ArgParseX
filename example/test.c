@@ -140,9 +140,9 @@ int main(int argc, char *argv[])
         .ErrorCallback = Error_,
     });
 
-    printf("test_str group 0: %s, %s\n", test_str1, test_str2);
-    printf("test_str group 1: %s, %s\n", test_str21, test_str22);
-    printf("test_str group 1: %s\n", test_str31);
+    printf("test_str group 1: %s, %s\n", test_str1, test_str2);
+    printf("test_str group 2: %s, %s\n", test_str21, test_str22);
+    printf("test_str group 3: %s\n", test_str31);
     printf("/win1 and /win2: %s, %s\n", test_win_str1, test_win_str2);
     printf("--setbool: %s\n", BoolToString_(test_bool));
     printf("-a: %s\n", BoolToString_(test_bool2));

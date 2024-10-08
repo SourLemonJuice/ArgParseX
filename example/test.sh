@@ -9,5 +9,6 @@
     -a \
     ++test2~str1-str2 \
     /win1Param1/win2Param2 \
-    --paramlist=a,b,c,d,e,f\
+    --paramlist=a,b,c,d,e,f \
+    --setint \
     paramEnd

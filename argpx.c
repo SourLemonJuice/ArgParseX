@@ -49,7 +49,7 @@ struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount]
             .prefix = "--",
             .assigner = "=",
             .delimiter = ",",
-            .attribute = ARGPX_ATTR_PARAM_DISABLE_ARG,
+            .attribute = 0,
         },
     [kArgpxHidden_BuiltinGroupUnix] =
         {
@@ -170,17 +170,17 @@ static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
     Converting a string to a specific type.
     And assign it to a pointer
 
-    The "number" is similar to strncmp()'s "n"
+    The "max_len" is similar to strncmp()'s "n"
  */
-static void StringToType_(char *source_str, int number, enum ArgpxVarType type, void **ptr)
+static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type, void **ptr)
 {
     // prepare a separate string
     int str_len = strlen(source_str);
     int actual_len;
     size_t actual_size;
     // chose the smallest one
-    if (number < str_len)
-        actual_len = number;
+    if (max_len < str_len)
+        actual_len = max_len;
     else
         actual_len = str_len;
     actual_size = actual_len * sizeof(char) + 1;
@@ -203,132 +203,57 @@ static void StringToType_(char *source_str, int number, enum ArgpxVarType type, 
     free(value_str);
 }
 
-enum ParamPartitionMode_ {
-    kPartitionSingleParam_,
-    kPartitionByArguments_,
-    kPartitionByDelimiter_,
-};
-
 /*
-    Use for ActionParamUnitBased_()
+    If param_len <= 0 then no limit
  */
-static bool DetectParamPartitionMode_(struct UnifiedData_ data[static 1],
-    struct UnifiedGroupCache_ grp[static 1], struct ArgpxFlag conf_ptr[static 1], char *param, int param_range_len)
+static void ActionParamSingle_(
+    struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], char *param_start, int param_len)
 {
-    enum ParamPartitionMode_ mode;
+    struct ArgpxParamUnit *unit_ptr = &conf->action_load.param_single;
+    if (param_len <= 0)
+        param_len = strlen(param_start);
 
-    // TODO
-    // we can't just use strstr(), because this:
-    // cmd /win1=str1/win2=str3,str4
-    // then function will think /win1 is partitioned by delimiter
-    // but with the advent of the SingleParam mode, it's doesn't to be a problem anymore?
-    char *delim_ptr;
-    if (grp->delimiter_toggle == true)
-        delim_ptr = strnstr_(param, grp->ptr->delimiter, param_range_len);
-    else
-        delim_ptr = NULL;
+    if (param_len <= 0)
+        ArgpxExit_(data, kArgpxStatusParamDeficiency);
 
-    if (delim_ptr == NULL) {
-        if ((grp->ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_ARG) != 0)
-            ArgpxExit_(data, kArgpxStatusParamDisallowArg);
-        mode = kPartitionByArguments_;
-    } else {
-        if ((grp->ptr->attribute & ARGPX_ATTR_PARAM_DISABLE_DELIMITER) != 0)
-            ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
-        mode = kPartitionByDelimiter_;
-    }
-
-    return mode;
+    StringToType_(param_start, param_len, unit_ptr->type, unit_ptr->ptr);
 }
 
 /*
     If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
 
-    If max_param_len <= 0, ignore it
-
-    TODO --test=testStr1,testStr2 is brocken
+    If range <= 0 then no limit
  */
-static void ActionParamUnitBased_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len, bool allow_multi_arg)
+static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
+    struct ArgpxFlag conf[static 1], char *param_base, int range)
 {
-    int param_count;
+    char *param_now;
+    int remaining;
+    for (int unit_idx = 0; unit_idx < conf->action_load.param_multi.count; unit_idx++) {
+        struct ArgpxParamUnit *unit = &conf->action_load.param_multi.units[unit_idx];
+        int param_len;
+        char *delimiter_ptr;
 
-    bool first_param = true;
-    char *final_param_start;
-    int param_len;
-    char *next_delim_ptr;
-    struct ArgpxParamUnit *unit_ptr;
-
-    // init
-    if (param_start_ptr != NULL)
-        final_param_start = param_start_ptr;
-    else
-        final_param_start = ShiftArguments_(data, 1);
-
-    enum ParamPartitionMode_ partition_mode;
-
-    switch (conf_ptr->action_type) {
-    case kArgpxActionParamSingle:
-        param_count = 1;
-        unit_ptr = &conf_ptr->action_load.param_single;
-
-        partition_mode = kPartitionSingleParam_;
-        break;
-    case kArgpxActionParamMulti:
-        param_count = conf_ptr->action_load.param_multi.count;
-        unit_ptr = conf_ptr->action_load.param_multi.units;
-
-        partition_mode = DetectParamPartitionMode_(data, grp, conf_ptr, final_param_start, strlen(final_param_start));
-        // if caller doesn't want the parameter to be split by args, exit
-        if (partition_mode == kPartitionByArguments_ and allow_multi_arg == false)
-            ArgpxExit_(data, kArgpxStatusParamDisallowDelimiter);
-        break;
-    default:
-        ArgpxExit_(data, kArgpxStatusActionUnavailable);
-    }
-
-    for (int param_idx = 0; param_idx < param_count; param_idx++) {
-        switch (partition_mode) {
-        case kPartitionSingleParam_:
-            param_len = strlen(final_param_start);
-            break;
-        case kPartitionByArguments_:
-            if (first_param == true)
-                first_param = false;
-            else
-                final_param_start = ShiftArguments_(data, 1);
-
-            param_len = strlen(final_param_start);
-            break;
-        case kPartitionByDelimiter_:
-            if (first_param == true)
-                first_param = false;
-            else
-                final_param_start = next_delim_ptr + 1;
-
-            next_delim_ptr = strstr(final_param_start, grp->ptr->delimiter); // TODO strstr()? where is the limit
-            if (next_delim_ptr == NULL) {
-                // if this is not the last parameter, the format is incorrect
-                if (param_idx + 1 < param_count)
-                    ArgpxExit_(data, kArgpxStatusParamDeficiency);
-                param_len = strlen(final_param_start);
-            } else {
-                param_len = next_delim_ptr - final_param_start;
-            }
-            break;
+        if (unit_idx == 0) {
+            param_now = param_base != NULL ? param_base : ShiftArguments_(data, 1);
+            remaining = range > 0 ? range : strlen(param_base);
         }
 
-        if (param_len == 0)
-            ArgpxExit_(data, kArgpxStatusParamDeficiency);
+        delimiter_ptr = strnstr_(param_now, grp->ptr->delimiter, remaining);
+        if (delimiter_ptr == NULL) {
+            if (unit_idx == conf->action_load.param_multi.count - 1)
+                param_len = remaining;
+            else
+                ArgpxExit_(data, kArgpxStatusParamDeficiency);
+        } else {
+            param_len = delimiter_ptr - param_now;
+        }
 
-        // add a limit
-        // TODO ???
-        if (param_len > max_param_len and max_param_len > 0)
-            param_len = max_param_len;
+        StringToType_(param_now, param_len, unit->type, unit->ptr);
 
-        // i know it's confusing...
-        StringToType_(final_param_start, param_len, unit_ptr[param_idx].type,
-            unit_ptr[param_idx].ptr /* passing secondary pointer */);
+        int used_len = param_len + grp->delimiter_len;
+        param_now += used_len;
+        remaining -= used_len;
     }
 }
 
@@ -342,7 +267,7 @@ static void AppendParamList_(
     *outcome->count = last_idx + 1;
 
     char **list;
-    size_t list_size = sizeof(char *[last_idx + 1]);
+    size_t list_size = sizeof(char * [last_idx + 1]);
 
     if (last_idx == 0) {
         list = malloc(list_size);
@@ -359,6 +284,9 @@ static void AppendParamList_(
     *outcome->params = list;
 }
 
+/*
+    If max_param_len <= 0 then no limit
+ */
 static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len)
 {
@@ -558,14 +486,17 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
     }
 
+    char *param_base = assigner_ptr != NULL ? assigner_ptr + 1 : NULL;
     // get flag parameters
     switch (conf_ptr->action_type) {
     case kArgpxActionParamSingle:
+        ActionParamSingle_(data, conf_ptr, param_base, 0);
+        break;
     case kArgpxActionParamMulti:
-        ActionParamUnitBased_(data, grp, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0, true);
+        ActionParamMulti_(data, grp, conf_ptr, param_base, 0);
         break;
     case kArgpxActionParamList:
-        ActionParamList_(data, grp, conf_ptr, assigner_ptr != NULL ? assigner_ptr + 1 : NULL, 0);
+        ActionParamList_(data, grp, conf_ptr, param_base, 0);
         break;
     case kArgpxActionSetMemory:
         ActionSetMemory_(data, conf_ptr);
@@ -582,6 +513,9 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     }
 }
 
+/*
+    TODO kind ugly
+ */
 static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1])
 {
     char *arg = data->args[data->arg_idx];
@@ -605,28 +539,27 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
 
         // parameter stuff
         char *param_start = base_ptr + name_len;
+        bool conf_have_param = ShouldFlagTypeHaveParam_(data, grp->ptr, conf);
+
+        bool assigner_exist;
+        // is the assigner exist?
+        if (grp->assigner_toggle == true)
+            assigner_exist = strncmp(param_start, grp->ptr->assigner, grp->assigner_len) == 0;
+        else
+            assigner_exist = false;
+
+        if (assigner_exist == true and conf_have_param == false)
+            ArgpxExit_(data, kArgpxStatusParamNoNeeded);
+        if (assigner_exist == true and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+            ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
+
+        if (assigner_exist == true) {
+            param_start += grp->assigner_len;
+            remaining_len -= grp->assigner_len;
+        }
+
         int param_len = 0;
-        bool assigner_exist = false;
-
-        switch (conf->action_type) {
-        case kArgpxActionParamSingle:
-        case kArgpxActionParamMulti:
-            // is the assigner exist?
-            if (grp->assigner_toggle == true)
-                assigner_exist = strncmp(base_ptr + name_len, grp->ptr->assigner, grp->assigner_len) == 0;
-            else
-                assigner_exist = false;
-
-            if (assigner_exist == true and ShouldFlagTypeHaveParam_(data, grp->ptr, conf) == false)
-                ArgpxExit_(data, kArgpxStatusParamNoNeeded);
-            if (assigner_exist == true and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
-                ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
-
-            if (assigner_exist) {
-                param_start += grp->assigner_len;
-                remaining_len -= grp->assigner_len;
-            }
-
+        if (conf_have_param == true) {
             // get parameter length
             if (next_prefix == NULL)
                 param_len = strlen(param_start);
@@ -637,19 +570,24 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
             // determine the parameter pointer
             if (param_len <= 0)
                 param_start = NULL;
+        }
 
-            // and do some check
-            if (param_start == NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
-                ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
-            if (param_start != NULL and assigner_exist == false
-                and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
-                ArgpxExit_(data, kArgpxStatusAssignmentDisallowTrailing);
+        // and do some check
+        if (param_start == NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+            ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
+        if (param_start != NULL and assigner_exist == false
+            and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
+            ArgpxExit_(data, kArgpxStatusAssignmentDisallowTrailing);
 
-            // TODO ugly?
-            if (conf->action_type != kArgpxActionParamList)
-                ActionParamUnitBased_(data, grp, conf, param_start, param_len, remaining_len <= 0 ? true : false);
-            else
-                ActionParamList_(data, grp, conf, param_start, param_len);
+        switch (conf->action_type) {
+        case kArgpxActionParamSingle:
+            ActionParamSingle_(data, conf, param_start, param_len);
+            break;
+        case kArgpxActionParamMulti:
+            ActionParamMulti_(data, grp, conf, param_start, param_len);
+            break;
+        case kArgpxActionParamList:
+            ActionParamList_(data, grp, conf, param_start, param_len);
             break;
         case kArgpxActionSetMemory:
             ActionSetMemory_(data, conf);
@@ -721,13 +659,13 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         grp.assigner_toggle = grp.ptr->assigner != NULL ? true : false;
         if (grp.assigner_toggle == true)
             grp.assigner_len = strlen(grp.ptr->assigner);
-        if (grp.assigner_len == 0 and grp.assigner_toggle == true)
+        if (grp.assigner_len == 0 /* TODO may not init */ and grp.assigner_toggle == true)
             ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
 
         grp.delimiter_toggle = grp.ptr->delimiter != NULL ? true : false;
         if (grp.delimiter_toggle == true)
             grp.delimiter_len = strlen(grp.ptr->delimiter);
-        if (grp.delimiter_len == 0 and grp.delimiter_toggle == true)
+        if (grp.delimiter_len == 0 /* TODO */ and grp.delimiter_toggle == true)
             ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
 
         if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
