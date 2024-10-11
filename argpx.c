@@ -1,12 +1,12 @@
 #include "argpx.h"
 
+#include <inttypes.h>
 #include <iso646.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <inttypes.h>
 
 /*
     An unified data of this library
@@ -110,11 +110,13 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Processing success";
     case kArgpxStatusFailure:
         return "Generic unknown error, I must be lazy~~~";
+    case kArgpxStatusGroupConfigInvalid:
+        return "There is an invalid group config, perhaps empty string";
     case kArgpxStatusUnknownFlag:
         return "Unknown flag name but the group matched(by prefix)";
     case kArgpxStatusActionUnavailable:
         return "Flag action type unavailable. Not implemented or configuration conflict";
-    case kArgpxStatusNoArgAvailableToShifting:
+    case kArgpxStatusArgumentsDeficiency:
         return "There is no more argument available to get";
     case kArgpxStatusParamNoNeeded:
         return "This flag don't need parameter, but the input seems to be assigning a value";
@@ -124,19 +126,13 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Detected assignment mode is Trailing, but for some reason, unavailable";
     case kArgpxStatusAssignmentDisallowArg:
         return "Detected assignment mode is Arg(argument), but for some reason, unavailable";
-    case kArgpxStatusParamDisallowDelimiter:
-        return "Detected parameter partition mode is Delimiter, but for some reason, unavailable";
-    case kArgpxStatusParamDisallowArg:
-        return "Detected parameter partition mode is Arg(argument), but for some reason, unavailable";
     case kArgpxStatusParamDeficiency:
-        return "The flag gets insufficient parameters";
-    case kArgpxStatusGroupConfigEmptyString:
-        return "One or more empty string in group configs are invalid";
-    case kArgpxStatusParamExtraDelimiterAtTail:
-        return "Have an extra delimiter at the tail of flag parameters range"; // TODO may can merged with others
+        return "Flag gets insufficient parameters";
+    case kArgpxStatusParamBizarreFormat:
+        return "Bizarre format occurs within the range of parameter string";
+    default:
+        return "[ArgParseX - ArgpxStatusToString(): not added]";
     }
-
-    return NULL;
 }
 
 /*
@@ -146,7 +142,7 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
 static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
     if (data->arg_idx + offset >= data->arg_c)
-        ArgpxExit_(data, kArgpxStatusNoArgAvailableToShifting);
+        ArgpxExit_(data, kArgpxStatusArgumentsDeficiency);
     data->arg_idx += offset;
 
     return data->args[data->arg_idx];
@@ -349,7 +345,7 @@ static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedG
             param_len = delimiter_ptr - param_now;
             // delimiter shouldn't exist at the last parameter's tail
             if (param_len + grp->delimiter_len >= remaining_len)
-                ArgpxExit_(data, kArgpxStatusParamExtraDelimiterAtTail);
+                ArgpxExit_(data, kArgpxStatusParamBizarreFormat);
         }
 
         AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len);
@@ -705,13 +701,13 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         if (grp.assigner_toggle == true)
             grp.assigner_len = strlen(grp.ptr->assigner);
         if (grp.assigner_len == 0 /* TODO may not init */ and grp.assigner_toggle == true)
-            ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
+            ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
         grp.delimiter_toggle = grp.ptr->delimiter != NULL ? true : false;
         if (grp.delimiter_toggle == true)
             grp.delimiter_len = strlen(grp.ptr->delimiter);
         if (grp.delimiter_len == 0 /* TODO */ and grp.delimiter_toggle == true)
-            ArgpxExit_(&data, kArgpxStatusGroupConfigEmptyString);
+            ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
         if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
             ParseArgumentComposable_(&data, &grp);

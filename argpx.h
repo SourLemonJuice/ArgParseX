@@ -15,18 +15,16 @@
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
+    kArgpxStatusGroupConfigInvalid,
     kArgpxStatusUnknownFlag,
     kArgpxStatusActionUnavailable,
-    kArgpxStatusNoArgAvailableToShifting,
+    kArgpxStatusArgumentsDeficiency,
     kArgpxStatusParamNoNeeded,
     kArgpxStatusAssignmentDisallowAssigner,
     kArgpxStatusAssignmentDisallowTrailing,
     kArgpxStatusAssignmentDisallowArg,
-    kArgpxStatusParamDisallowDelimiter,
-    kArgpxStatusParamDisallowArg,
     kArgpxStatusParamDeficiency,
-    kArgpxStatusGroupConfigEmptyString,
-    kArgpxStatusParamExtraDelimiterAtTail,
+    kArgpxStatusParamBizarreFormat,
 };
 
 enum ArgpxActionType {
@@ -60,12 +58,8 @@ enum ArgpxVarType {
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING 0b1 << 1
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG 0b1 << 2
 
-// TODO preparing to discontinue
-// #define ARGPX_ATTR_PARAM_DISABLE_DELIMITER 0b1 << 3
-// #define ARGPX_ATTR_PARAM_DISABLE_ARG 0b1 << 4
-
-#define ARGPX_ATTR_COMPOSABLE 0b1 << 5
-#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 6
+#define ARGPX_ATTR_COMPOSABLE 0b1 << 3
+#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 4
 
 struct ArgpxFlagGroup {
     // all group attribute
