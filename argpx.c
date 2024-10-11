@@ -296,6 +296,10 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct Unified
         param_now += used_len;
         remaining -= used_len;
     }
+    // normally, "remaining" is negative. I didn't think to reuse it
+
+    if (remaining >= 0)
+        ArgpxExit_(data, kArgpxStatusParamBizarreFormat);
 }
 
 /*
