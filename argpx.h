@@ -28,12 +28,11 @@ enum ArgpxStatus {
 };
 
 enum ArgpxActionType {
-    // get multiple flag parameters with different data type
-    kArgpxActionParamMulti,
     // get a single flag parameter, but can still convert it's data type
     kArgpxActionParamSingle,
+    // get multiple flag parameters with different data type
+    kArgpxActionParamMulti,
     // get flag parameters raw string array, the array size is dynamic
-    // ParamList action only can uses the Delimiter but can't partition by arg
     kArgpxActionParamList,
     // if need some custom structure or the other data type
     kArgpxActionSetMemory,
