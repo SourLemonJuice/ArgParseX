@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 /*
     An unified data of this library
@@ -167,12 +168,47 @@ static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
 }
 
 /*
+    return:
+        < 0 == Error
+        0 == false
+        1 == true
+ */
+static int StringIsBool_(char *string, int length)
+{
+    if (length <= 0)
+        return -1;
+
+    char *true_list[] = {
+        "true",
+        "True",
+        "TRUE",
+    };
+    char *false_list[] = {
+        "false",
+        "False",
+        "FALSE",
+    };
+
+    for (int i = 0; i < sizeof(true_list) / sizeof(char *); i++) {
+        if (strncmp(string, true_list[i], length) == 0)
+            return true;
+    }
+
+    for (int i = 0; i < sizeof(false_list) / sizeof(char *); i++) {
+        if (strncmp(string, false_list[i], length) == 0)
+            return false;
+    }
+
+    return -1;
+}
+
+/*
     Converting a string to a specific type.
     And assign it to a pointer
 
     The "max_len" is similar to strncmp()'s "n"
  */
-static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type, void **ptr)
+static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type, void *ptr)
 {
     // prepare a separate string
     int str_len = strlen(source_str);
@@ -193,10 +229,19 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
     // if can, the value_str needs to free up
     switch (type) {
     case kArgpxVarString:
-        *ptr = value_str;
+        *(char **)ptr = value_str;
         return;
-    default:
-        *ptr = NULL;
+    case kArgpxVarInt:
+        *(int *)ptr = strtoimax(value_str, NULL, 0);
+        break;
+    case kArgpxVarBool:
+        *(bool *)ptr = StringIsBool_(value_str, strlen(value_str));
+        break;
+    case kArgpxVarFloat:
+        *(float *)ptr = strtof(value_str, NULL);
+        break;
+    case kArgpxVarDouble:
+        *(double *)ptr = strtod(value_str, NULL);
         break;
     }
 

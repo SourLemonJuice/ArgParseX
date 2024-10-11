@@ -49,7 +49,6 @@ enum ArgpxActionType {
 enum ArgpxVarType {
     // string type will return a manually alloced full string(have \0)
     kArgpxVarString,
-    // TODO
     kArgpxVarInt,
     kArgpxVarBool,
     kArgpxVarFloat,
@@ -87,7 +86,7 @@ struct ArgpxFlagGroup {
 // Convert a string in flag's parameter
 struct ArgpxParamUnit {
     enum ArgpxVarType type;
-    // a list of secondary pointer of actual variable
+    // a list of pointer of actual variable
     void *ptr;
 };
 
