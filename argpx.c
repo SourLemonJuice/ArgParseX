@@ -698,15 +698,13 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
 
         // empty string checks
         grp.assigner_toggle = grp.ptr->assigner != NULL ? true : false;
-        if (grp.assigner_toggle == true)
-            grp.assigner_len = strlen(grp.ptr->assigner);
-        if (grp.assigner_len == 0 /* TODO may not init */ and grp.assigner_toggle == true)
+        grp.assigner_len = grp.assigner_toggle == true ? strlen(grp.ptr->assigner) : 0;
+        if (grp.assigner_len == 0 and grp.assigner_toggle == true)
             ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
         grp.delimiter_toggle = grp.ptr->delimiter != NULL ? true : false;
-        if (grp.delimiter_toggle == true)
-            grp.delimiter_len = strlen(grp.ptr->delimiter);
-        if (grp.delimiter_len == 0 /* TODO */ and grp.delimiter_toggle == true)
+        grp.delimiter_len = grp.delimiter_toggle == true ? strlen(grp.ptr->delimiter) : 0;
+        if (grp.delimiter_len == 0 and grp.delimiter_toggle == true)
             ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
         if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
