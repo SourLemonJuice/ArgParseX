@@ -31,6 +31,7 @@ struct UnifiedData_ {
     int conf_c;
     // pointer to configs array
     struct ArgpxFlag *confs;
+    struct ArgpxTerminateMethod terminate;
 };
 
 struct UnifiedGroupCache_ {
@@ -150,17 +151,27 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 
 /*
     Copy the current argument to result data structure as a command parameter
+
+    return:
+        0: ok
+        1(> 0): need terminate processing as required by MainOption
+        < 0: error
  */
-static void AppendCommandParameter_(struct UnifiedData_ data[static 1])
+static int AppendCommandParameter_(struct UnifiedData_ data[static 1])
 {
     char *arg = data->args[data->arg_idx];
     struct ArgpxResult *res = data->res;
 
     res->param_count += 1;
-    size_t this_arg_size = strlen(arg) + 1;
-
     res->paramv = realloc(res->paramv, sizeof(char * [res->param_count]));
     res->paramv[res->param_count - 1] = arg;
+
+    if (data->terminate.method == kArgpxTerminateAtNumberOfCommandParam) {
+        if (res->param_count >= data->terminate.load.num_of_cmd_param.limit)
+            return 1;
+    }
+
+    return 0;
 }
 
 /*
@@ -679,6 +690,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         .group_c = func.groupc,
         .conf_c = func.flagc,
         .confs = func.flagv,
+        .terminate = func.terminate,
     };
 
     if (data.res == NULL)
@@ -693,8 +705,10 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         struct UnifiedGroupCache_ grp = {0};
         grp.idx = MatchingGroup_(&data);
         if (grp.idx < 0) {
-            AppendCommandParameter_(&data);
-            continue;
+            if (AppendCommandParameter_(&data) > 0)
+                return data.res;
+            else
+                continue;
         }
         grp.ptr = &data.groups[grp.idx];
 

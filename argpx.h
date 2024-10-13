@@ -43,15 +43,6 @@ enum ArgpxActionType {
     kArgpxActionSetInt,
 };
 
-enum ArgpxVarType {
-    // string type will return a manually alloced full string(have \0)
-    kArgpxVarString,
-    kArgpxVarInt,
-    kArgpxVarBool,
-    kArgpxVarFloat,
-    kArgpxVarDouble,
-};
-
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
 // independent flag won't use trailing mode
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING 0b1 << 1
@@ -74,6 +65,15 @@ struct ArgpxFlagGroup {
     // NULL: disable
     // the empty string: ""(single \0), is an error
     char *delimiter;
+};
+
+enum ArgpxVarType {
+    // string type will return a manually alloced full string(have \0)
+    kArgpxVarString,
+    kArgpxVarInt,
+    kArgpxVarBool,
+    kArgpxVarFloat,
+    kArgpxVarDouble,
 };
 
 // Convert a string in flag's parameter
@@ -157,6 +157,22 @@ extern struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGrou
 #define ARGPX_BUILTIN_GROUP_GNU argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
 #define ARGPX_BUILTIN_GROUP_UNIX argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
 
+enum ArgpxHidden_TerminateMethod {
+    kArgpxTerminateNone,
+    kArgpxTerminateAtNumberOfCommandParam,
+};
+
+struct ArgpxHidden_TerminateAtNumberOfCommandParam {
+    int limit;
+};
+
+struct ArgpxTerminateMethod {
+    enum ArgpxHidden_TerminateMethod method;
+    union {
+        struct ArgpxHidden_TerminateAtNumberOfCommandParam num_of_cmd_param;
+    } load;
+};
+
 /*
     The function parameter of ArgpxMain()
  */
@@ -168,6 +184,7 @@ struct ArgpxMainOption {
     struct ArgpxFlagGroup *groupv;
     int flagc;
     struct ArgpxFlag *flagv;
+    struct ArgpxTerminateMethod terminate;
     void (*ErrorCallback)(struct ArgpxResult *);
 };
 

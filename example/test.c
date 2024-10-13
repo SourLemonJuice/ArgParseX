@@ -137,6 +137,9 @@ int main(int argc, char *argv[])
         .groupv = group,
         .flagc = sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag),
         .flagv = ArgpxFlag,
+        .terminate.method = kArgpxTerminateNone,
+        // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
+        // .terminate.load.num_of_cmd_param.limit = 2,
         .ErrorCallback = Error_,
     });
 
