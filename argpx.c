@@ -32,6 +32,8 @@ struct UnifiedData_ {
     // pointer to configs array
     struct ArgpxFlag *confs;
     struct ArgpxTerminateMethod terminate;
+    char *stop_parsing;
+    bool stop_parsing_status;
 };
 
 struct UnifiedGroupCache_ {
@@ -404,12 +406,13 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag c
     Detect the group where the argument is located.
     A group index will be returned. Use GroupIndexToPointer_() convert it to a pointer.
     return:
-      - >= 0: valid index of data.groups[]
-      - < 0: no group matched
+      >= 0: valid index of data.groups[]
+      < 0: it's a command parameter, not flag
  */
 static int MatchingGroup_(struct UnifiedData_ data[static 1])
 {
-    char *arg_ptr = data->args[data->arg_idx];
+    char *arg = data->args[data->arg_idx];
+
     struct ArgpxFlagGroup *g_ptr;
     int no_prefix_group_idx = -1;
     for (int g_idx = 0; g_idx < data->group_c; g_idx++) {
@@ -418,14 +421,14 @@ static int MatchingGroup_(struct UnifiedData_ data[static 1])
         if (g_ptr->prefix[0] == '\0')
             no_prefix_group_idx = g_idx;
 
-        if (strncmp(arg_ptr, g_ptr->prefix, strlen(g_ptr->prefix)) == 0)
+        if (strncmp(arg, g_ptr->prefix, strlen(g_ptr->prefix)) == 0)
             return g_idx;
     }
 
     if (no_prefix_group_idx >= 0)
         return no_prefix_group_idx;
 
-    return INT_MIN;
+    return -1;
 }
 
 /*
@@ -673,9 +676,6 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
 }
 
 /*
-    If ErrorCallback is NULL then use exit(EXIT_FAILURE),
-    if is a function then need accept a result structure, this should help
-
     The result struct ArgpxResult needs to be freed up manually
  */
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
@@ -691,6 +691,8 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         .conf_c = func.flagc,
         .confs = func.flagv,
         .terminate = func.terminate,
+        .stop_parsing = func.stop_parsing,
+        .stop_parsing_status = false,
     };
 
     if (data.res == NULL)
@@ -702,8 +704,18 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
+        // TODO try to deprecating data.arg_idx
+        char *arg = data.args[data.arg_idx];
+
+        if (strcmp(arg, data.stop_parsing) == 0)
+            data.stop_parsing_status = true;
+
         struct UnifiedGroupCache_ grp = {0};
-        grp.idx = MatchingGroup_(&data);
+        if (data.stop_parsing_status == false)
+            grp.idx = MatchingGroup_(&data);
+        else
+            grp.idx = -1;
+
         if (grp.idx < 0) {
             if (AppendCommandParameter_(&data) > 0)
                 return data.res;

@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
         .terminate.method = kArgpxTerminateNone,
         // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
         // .terminate.load.num_of_cmd_param.limit = 2,
+        .stop_parsing = "--",
         .ErrorCallback = Error_,
     });
 

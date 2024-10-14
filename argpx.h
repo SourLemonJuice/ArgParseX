@@ -91,7 +91,7 @@ struct ArgpxHidden_OutcomeParamMulti {
 
 struct ArgpxHidden_OutcomeParamList {
     int *count;
-    char ***params; // pointer to a string list...
+    char ***params; // pointer to a pointer list to a string list...
 };
 
 struct ArgpxHidden_OutcomeSetMemory {
@@ -185,6 +185,10 @@ struct ArgpxMainOption {
     int flagc;
     struct ArgpxFlag *flagv;
     struct ArgpxTerminateMethod terminate;
+    // stop parsing symbol, like "--" or "--%"
+    char *stop_parsing;
+    // if ErrorCallback is NULL then use exit(EXIT_FAILURE),
+    // if it's a function then need accept a result structure, this should be helpful.
     void (*ErrorCallback)(struct ArgpxResult *);
 };
 
