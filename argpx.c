@@ -159,14 +159,13 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
         1(> 0): need terminate processing as required by MainOption
         < 0: error
  */
-static int AppendCommandParameter_(struct UnifiedData_ data[static 1])
+static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str)
 {
-    char *arg = data->args[data->arg_idx];
     struct ArgpxResult *res = data->res;
 
     res->param_count += 1;
     res->paramv = realloc(res->paramv, sizeof(char * [res->param_count]));
-    res->paramv[res->param_count - 1] = arg;
+    res->paramv[res->param_count - 1] = str;
 
     if (data->terminate.method == kArgpxTerminateAtNumberOfCommandParam) {
         if (res->param_count >= data->terminate.load.num_of_cmd_param.limit)
@@ -409,10 +408,8 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag c
       >= 0: valid index of data.groups[]
       < 0: it's a command parameter, not flag
  */
-static int MatchingGroup_(struct UnifiedData_ data[static 1])
+static int MatchingGroup_(struct UnifiedData_ data[static 1], char *arg)
 {
-    char *arg = data->args[data->arg_idx];
-
     struct ArgpxFlagGroup *g_ptr;
     int no_prefix_group_idx = -1;
     for (int g_idx = 0; g_idx < data->group_c; g_idx++) {
@@ -515,9 +512,8 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
     Unlike composable mode, independent mode need to know the exact length of the flag name.
     So it must determine in advance if the assignment symbol exist
  */
-static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1])
+static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
 {
-    char *arg = data->args[data->arg_idx];
     char *name_start = arg + grp->prefix_len;
 
     char *assigner_ptr;
@@ -575,10 +571,8 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
 /*
     TODO kind ugly
  */
-static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1])
+static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
 {
-    char *arg = data->args[data->arg_idx];
-
     // believe that the prefix exists
     char *base_ptr = arg + grp->prefix_len;
     int remaining_len = strlen(arg) - grp->prefix_len;
@@ -704,20 +698,15 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
-        // TODO try to deprecating data.arg_idx
         char *arg = data.args[data.arg_idx];
-
         if (strcmp(arg, data.stop_parsing) == 0)
             data.stop_parsing_status = true;
 
         struct UnifiedGroupCache_ grp = {0};
-        if (data.stop_parsing_status == false)
-            grp.idx = MatchingGroup_(&data);
-        else
-            grp.idx = -1;
+        grp.idx = data.stop_parsing_status == false ? MatchingGroup_(&data, arg) : -1;
 
         if (grp.idx < 0) {
-            if (AppendCommandParameter_(&data) > 0)
+            if (AppendCommandParameter_(&data, arg) > 0)
                 return data.res;
             else
                 continue;
@@ -738,9 +727,9 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
             ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
         if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
-            ParseArgumentComposable_(&data, &grp);
+            ParseArgumentComposable_(&data, &grp, arg);
         else
-            ParseArgumentIndependent_(&data, &grp);
+            ParseArgumentIndependent_(&data, &grp, arg);
     }
 
     return data.res;

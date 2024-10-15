@@ -19,8 +19,6 @@ There has `auto` and `typeof()`... that could make things easier
 ## Todo
 
 - 时间复杂度可能有点高的说，等最后肯定会去用哈希表什么的啦...
-- 停止解析符
-- 允许设置些能直接停止解析的方式，比如遇到了第一个非标志参数之类的（给子命令这种东西用）
 - 重复匹配一个标志的后果？
 
 ## See also
