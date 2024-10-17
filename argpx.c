@@ -512,7 +512,8 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
     Unlike composable mode, independent mode need to know the exact length of the flag name.
     So it must determine in advance if the assignment symbol exist
  */
-static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
+static void ParseArgumentIndependent_(
+    struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
 {
     char *name_start = arg + grp->prefix_len;
 
@@ -568,10 +569,8 @@ static void ParseArgumentIndependent_(struct UnifiedData_ data[static 1], struct
     }
 }
 
-/*
-    TODO kind ugly
- */
-static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
+static void ParseArgumentComposable_(
+    struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
 {
     // believe that the prefix exists
     char *base_ptr = arg + grp->prefix_len;
@@ -618,11 +617,12 @@ static void ParseArgumentComposable_(struct UnifiedData_ data[static 1], struct 
                 param_len = strlen(param_start);
             else
                 param_len = next_prefix - param_start;
-            remaining_len -= param_len;
 
             // determine the parameter pointer
             if (param_len <= 0)
                 param_start = NULL;
+
+            remaining_len -= param_len;
         }
 
         // and do some check
@@ -734,3 +734,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
 
     return data.res;
 }
+
+/*
+    TODO New entrypoint, processing single argument. Give more back to the user.
+ */

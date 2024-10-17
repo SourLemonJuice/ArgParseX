@@ -1,5 +1,8 @@
 #/usr/bin/env bash
 
+# for scan-build(Clang Static Analyzer)
+CC="clang"
+
 src_code=(
     "../argpx.c"
     "./test.c"
@@ -19,11 +22,11 @@ function run_echo
     local -
     set -o xtrace
 
-    time -- $@
+    $@
 }
 
 run_echo \
-clang "${src_code[@]}" "${cflag[@]}" \
+"${CC}" "${src_code[@]}" "${cflag[@]}" \
     --output test.out
 
 echo ""
