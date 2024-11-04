@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "argpx.h"
+#include "argpx/argpx.h"
 
 #if ARGPX_VERSION_MAJOR != 0
     #error ArgParseX major version mismatch
