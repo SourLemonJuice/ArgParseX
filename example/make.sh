@@ -10,6 +10,7 @@ src_code=(
 
 cflag=(
     "-std=c99"
+    "-Wall"
     "-I../include/"
     "-O0"
     "-g"

@@ -150,10 +150,6 @@ struct ArgpxResult {
     int param_count;
     // an array of command parameters
     char **paramv;
-    // the command argc
-    int argc;
-    // the command argv
-    char **argv;
 };
 
 enum ArgpxHidden_BuiltinGroup {
@@ -194,15 +190,11 @@ struct ArgpxMainOption {
     struct ArgpxTerminateMethod terminate;
     // stop parsing symbol, like "--" or "--%"
     char *stop_parsing;
-    // if ErrorCallback is NULL then use exit(EXIT_FAILURE),
-    // if it's a function then need accept a result structure, this should be helpful.
-    // TODO change to direct return value.
-    void (*ErrorCallback)(struct ArgpxResult *);
 };
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
-void ArgpxAppendGroup(struct ArgpxGroupSet *set, struct ArgpxGroupItem *new);
-void ArgpxAppendFlag(struct ArgpxFlagSet *set, struct ArgpxFlagItem *new);
+void ArgpxAppendGroup(struct ArgpxGroupSet set[static 1], const struct ArgpxGroupItem new[static 1]);
+void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func_params);
 
 #endif

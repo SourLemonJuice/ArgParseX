@@ -146,10 +146,15 @@ int main(int argc, char *argv[])
         // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
         // .terminate.load.num_of_cmd_param.limit = 2,
         .stop_parsing = "--",
-        .ErrorCallback = Error_,
     });
 
     // clang-format on
+
+    // TODO temp test
+    if (res == NULL)
+        Error_(res);
+    if (res->status != kArgpxStatusSuccess)
+        Error_(res);
 
     printf("test_str group 1: %s, %s\n", test_str1, test_str2);
     printf("test_str group 2: %s, %s\n", test_str21, test_str22);
