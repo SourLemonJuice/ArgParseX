@@ -51,7 +51,7 @@ enum ArgpxActionType {
 #define ARGPX_ATTR_COMPOSABLE 0b1 << 3
 #define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 4
 
-struct ArgpxFlagGroup {
+struct ArgpxGroupItem {
     // all group attribute
     uint16_t attribute;
     // prefix of flag, like the "--" of "--flag". it's a string
@@ -65,6 +65,11 @@ struct ArgpxFlagGroup {
     // NULL: disable
     // the empty string: ""(single \0), is an error
     char *delimiter;
+};
+
+struct ArgpxGroupSet {
+    int count;
+    struct ArgpxGroupItem *ptr;
 };
 
 enum ArgpxVarType {
@@ -111,7 +116,7 @@ struct ArgpxHidden_OutcomeSetInt {
 };
 
 // in library source code it is called "conf/config"
-struct ArgpxFlag {
+struct ArgpxFlagItem {
     // It's an index not an id
     // emm... I trust the programer can figure out the array index in their hands
     // then there is no need for a new hash table here
@@ -128,6 +133,11 @@ struct ArgpxFlag {
         struct ArgpxHidden_OutcomeSetBool set_bool;
         struct ArgpxHidden_OutcomeSetInt set_int;
     } action_load;
+};
+
+struct ArgpxFlagSet {
+    int count;
+    struct ArgpxFlagItem *ptr;
 };
 
 struct ArgpxResult {
@@ -152,10 +162,10 @@ enum ArgpxHidden_BuiltinGroup {
     kArgpxHidden_BuiltinGroupCount,
 };
 
-extern struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount];
+extern const struct ArgpxGroupItem argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount];
 
-#define ARGPX_BUILTIN_GROUP_GNU argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
-#define ARGPX_BUILTIN_GROUP_UNIX argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
+#define ARGPX_BUILTIN_GROUP_GNU &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
+#define ARGPX_BUILTIN_GROUP_UNIX &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
 
 enum ArgpxHidden_TerminateMethod {
     kArgpxTerminateNone,
@@ -179,20 +189,20 @@ struct ArgpxTerminateMethod {
 struct ArgpxMainOption {
     int argc;
     char **argv;
-    int argc_base;
-    int groupc;
-    struct ArgpxFlagGroup *groupv;
-    int flagc;
-    struct ArgpxFlag *flagv;
+    struct ArgpxGroupSet *group;
+    struct ArgpxFlagSet *flag;
     struct ArgpxTerminateMethod terminate;
     // stop parsing symbol, like "--" or "--%"
     char *stop_parsing;
     // if ErrorCallback is NULL then use exit(EXIT_FAILURE),
     // if it's a function then need accept a result structure, this should be helpful.
+    // TODO change to direct return value.
     void (*ErrorCallback)(struct ArgpxResult *);
 };
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
+void ArgpxAppendGroup(struct ArgpxGroupSet *set, struct ArgpxGroupItem *new);
+void ArgpxAppendFlag(struct ArgpxFlagSet *set, struct ArgpxFlagItem *new);
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func_params);
 
 #endif

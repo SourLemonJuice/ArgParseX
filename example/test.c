@@ -42,107 +42,114 @@ int main(int argc, char *argv[])
     int test_param_list_count = 0;
     char **test_param_list = NULL;
 
-    struct ArgpxFlagGroup group[] = {
-        ARGPX_BUILTIN_GROUP_GNU,
-        {
-            .attribute = 0,
-            .prefix = "++",
-            .assigner = "~",
-            .delimiter = "-",
-        },
-        ARGPX_BUILTIN_GROUP_UNIX,
-        {
-            .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_COMPOSABLE_NEED_PREFIX,
-            .prefix = "/",
-            .assigner = "=",
-            .delimiter = ",",
-        },
-    };
+    // clang-format off
 
-    struct ArgpxFlag ArgpxFlag[] = {
-        {
-            .group_idx = 0,
-            .name = "test",
-            .action_type = kArgpxActionParamMulti,
-            .action_load.param_multi.count = 2,
-            .action_load.param_multi.units =
-                (struct ArgpxParamUnit[]){
-                    {.type = kArgpxVarString, .ptr = &test_str1},
-                    {.type = kArgpxVarString, .ptr = &test_str2},
-                },
-        },
-        {
-            .group_idx = 0,
-            .name = "setbool",
-            .action_type = kArgpxActionSetBool,
-            .action_load.set_bool = {.source = true, .target_ptr = &test_bool},
-        },
-        {
-            .group_idx = 0,
-            .name = "setint",
-            .action_type = kArgpxActionSetInt,
-            .action_load.set_int = {.source = 123, .target_ptr = &test_int},
-        },
-        {
-            .group_idx = 1,
-            .name = "test2",
-            .action_type = kArgpxActionParamMulti,
-            .action_load.param_multi.count = 2,
-            .action_load.param_multi.units =
-                (struct ArgpxParamUnit[]){
-                    {.type = kArgpxVarString, .ptr = &test_str21},
-                    {.type = kArgpxVarString, .ptr = &test_str22},
-                },
-        },
-        {
-            .group_idx = 0,
-            .name = "paramlist",
-            .action_type = kArgpxActionParamList,
-            .action_load.param_list = {
+    struct ArgpxGroupSet group = {0};
+    ArgpxAppendGroup(&group, ARGPX_BUILTIN_GROUP_GNU);
+    // https://stackoverflow.com/a/11152199/25416550
+    // other element will be initialized implicitly
+    ArgpxAppendGroup(&group, &(struct ArgpxGroupItem){
+        .prefix = "++",
+        .assigner = "~",
+        .delimiter = "-",
+    });
+    ArgpxAppendGroup(&group, ARGPX_BUILTIN_GROUP_UNIX);
+    ArgpxAppendGroup(&group, &(struct ArgpxGroupItem){
+        .prefix = "/",
+        .assigner = "=",
+        .delimiter = ",",
+        .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_COMPOSABLE_NEED_PREFIX,
+    });
+
+    struct ArgpxFlagSet flag = {0};
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 0,
+        .name = "test",
+        .action_type = kArgpxActionParamMulti,
+        .action_load.param_multi.count = 2,
+        .action_load.param_multi.units =
+            (struct ArgpxParamUnit[]){
+                {.type = kArgpxVarString, .ptr = &test_str1},
+                {.type = kArgpxVarString, .ptr = &test_str2},
+            },
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 0,
+        .name = "setbool",
+        .action_type = kArgpxActionSetBool,
+        .action_load.set_bool = {.source = true, .target_ptr = &test_bool},
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 0,
+        .name = "setint",
+        .action_type = kArgpxActionSetInt,
+        .action_load.set_int = {.source = 123, .target_ptr = &test_int},
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 0,
+        .name = "setint",
+        .action_type = kArgpxActionSetInt,
+        .action_load.set_int = {.source = 123, .target_ptr = &test_int},
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 1,
+        .name = "test2",
+        .action_type = kArgpxActionParamMulti,
+        .action_load.param_multi.count = 2,
+        .action_load.param_multi.units =
+            (struct ArgpxParamUnit[]){
+                {.type = kArgpxVarString, .ptr = &test_str21},
+                {.type = kArgpxVarString, .ptr = &test_str22},
+            },
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 0,
+        .name = "paramlist",
+        .action_type = kArgpxActionParamList,
+        .action_load.param_list =
+            {
                 .count = &test_param_list_count,
                 .params = &test_param_list,
-            }
-        },
-        {
-            .group_idx = 3,
-            .name = "win1",
-            .action_type = kArgpxActionParamSingle,
-            .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str1},
-        },
-        {
-            .group_idx = 3,
-            .name = "win2",
-            .action_type = kArgpxActionParamSingle,
-            .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str2},
-        },
-        {
-            .group_idx = 2,
-            .name = "a",
-            .action_type = kArgpxActionSetBool,
-            .action_load.set_bool = {.source = true, .target_ptr = &test_bool2},
-        },
-        {
-            .group_idx = 2,
-            .name = "b",
-            .action_type = kArgpxActionParamSingle,
-            .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_str31},
-        },
-    };
+            },
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 3,
+        .name = "win1",
+        .action_type = kArgpxActionParamSingle,
+        .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str1},
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 3,
+        .name = "win2",
+        .action_type = kArgpxActionParamSingle,
+        .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str2},
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 2,
+        .name = "a",
+        .action_type = kArgpxActionSetBool,
+        .action_load.set_bool = {.source = true, .target_ptr = &test_bool2},
+    });
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+        .group_idx = 2,
+        .name = "b",
+        .action_type = kArgpxActionParamSingle,
+        .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_str31},
+    });
 
     struct ArgpxResult *res = ArgpxMain((struct ArgpxMainOption){
         .argc = argc,
         .argv = argv,
-        .argc_base = 1,
-        .groupc = sizeof(group) / sizeof(struct ArgpxFlagGroup),
-        .groupv = group,
-        .flagc = sizeof(ArgpxFlag) / sizeof(struct ArgpxFlag),
-        .flagv = ArgpxFlag,
+        .group = &group,
+        .flag = &flag,
         .terminate.method = kArgpxTerminateNone,
         // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
         // .terminate.load.num_of_cmd_param.limit = 2,
         .stop_parsing = "--",
         .ErrorCallback = Error_,
     });
+
+    // clang-format on
 
     printf("test_str group 1: %s, %s\n", test_str1, test_str2);
     printf("test_str group 2: %s, %s\n", test_str21, test_str22);

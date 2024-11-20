@@ -23,14 +23,8 @@ struct UnifiedData_ {
     // the arg index being processed, it records the first unprocessed arg.
     // no no no, try to make it to record the last processed arg
     int arg_idx;
-    // groups count
-    int group_c;
-    // pointer to groups array
-    struct ArgpxFlagGroup *groups;
-    // configs count
-    int conf_c;
-    // pointer to configs array
-    struct ArgpxFlag *confs;
+    struct ArgpxGroupSet group;
+    struct ArgpxFlagSet conf;
     struct ArgpxTerminateMethod terminate;
     char *stop_parsing;
     bool stop_parsing_status;
@@ -38,7 +32,7 @@ struct UnifiedData_ {
 
 struct UnifiedGroupCache_ {
     int idx;
-    struct ArgpxFlagGroup *ptr;
+    struct ArgpxGroupItem item;
     int prefix_len;
     int assigner_len;
     bool assigner_toggle;
@@ -46,8 +40,9 @@ struct UnifiedGroupCache_ {
     int delimiter_toggle;
 };
 
-// it would be ugly to write it directly to macro
-struct ArgpxFlagGroup argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount] = {
+// it would be ugly to write it directly to macro.
+// TODO but it's also not beautiful.
+const struct ArgpxGroupItem argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount] = {
     [kArgpxHidden_BuiltinGroupGnu] =
         {
             .prefix = "--",
@@ -136,6 +131,22 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     default:
         return "[ArgParseX - ArgpxStatusToString(): not added]";
     }
+}
+
+void ArgpxAppendGroup(struct ArgpxGroupSet set[static 1], struct ArgpxGroupItem new[static 1])
+{
+    set->count += 1;
+
+    set->ptr = realloc(set->ptr, sizeof(struct ArgpxGroupItem[set->count]));
+    set->ptr[set->count - 1] = *new;
+}
+
+void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], struct ArgpxFlagItem new[static 1])
+{
+    set->count += 1;
+
+    set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlagItem[set->count]));
+    set->ptr[set->count - 1] = *new;
 }
 
 /*
@@ -260,7 +271,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
     If param_len <= 0 then no limit
  */
 static void ActionParamSingle_(
-    struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], char *param_start, int param_len)
+    struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf[static 1], char *param_start, int param_len)
 {
     struct ArgpxParamUnit *unit_ptr = &conf->action_load.param_single;
     if (param_len <= 0)
@@ -278,7 +289,7 @@ static void ActionParamSingle_(
     If range <= 0 then no limit
  */
 static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf[static 1], char *param_base, int range)
+    struct ArgpxFlagItem conf[static 1], char *param_base, int range)
 {
     char *param_now;
     int remaining;
@@ -292,7 +303,7 @@ static void ActionParamMulti_(struct UnifiedData_ data[static 1], struct Unified
             remaining = range > 0 ? range : strlen(param_base);
         }
 
-        delimiter_ptr = strnstr_(param_now, grp->ptr->delimiter, remaining);
+        delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining);
         if (delimiter_ptr == NULL) {
             if (unit_idx == conf->action_load.param_multi.count - 1)
                 param_len = remaining;
@@ -345,14 +356,14 @@ static void AppendParamList_(
     If max_param_len <= 0 then no limit
  */
 static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len)
+    struct ArgpxFlagItem conf_ptr[static 1], char *param_start_ptr, int max_param_len)
 {
     char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
     int remaining_len = max_param_len > 0 ? max_param_len : strlen(param_now);
 
     char *delimiter_ptr;
     for (int param_idx; remaining_len > 0; param_idx++) {
-        delimiter_ptr = strnstr_(param_now, grp->ptr->delimiter, remaining_len);
+        delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining_len);
 
         int param_len;
         if (delimiter_ptr == NULL) {
@@ -377,7 +388,7 @@ static void ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedG
 /*
     kArgpxActionSetMemory
  */
-static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
     struct ArgpxHidden_OutcomeSetMemory *ptr = &conf_ptr->action_load.set_memory;
     memcpy(ptr->target_ptr, ptr->source_ptr, ptr->size);
@@ -386,7 +397,7 @@ static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFla
 /*
     kArgpxActionSetBool
  */
-static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
     struct ArgpxHidden_OutcomeSetBool *ptr = &conf_ptr->action_load.set_bool;
     *ptr->target_ptr = ptr->source;
@@ -395,7 +406,7 @@ static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag 
 /*
     kArgpxActionSetInt
  */
-static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
     struct ArgpxHidden_OutcomeSetInt *ptr = &conf_ptr->action_load.set_int;
     *ptr->target_ptr = ptr->source;
@@ -410,15 +421,15 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag c
  */
 static int MatchingGroup_(struct UnifiedData_ data[static 1], char *arg)
 {
-    struct ArgpxFlagGroup *g_ptr;
+    struct ArgpxGroupItem grp;
     int no_prefix_group_idx = -1;
-    for (int g_idx = 0; g_idx < data->group_c; g_idx++) {
-        g_ptr = &data->groups[g_idx];
+    for (int g_idx = 0; g_idx < data->group.count; g_idx++) {
+        grp = data->group.ptr[g_idx];
 
-        if (g_ptr->prefix[0] == '\0')
+        if (grp.prefix[0] == '\0')
             no_prefix_group_idx = g_idx;
 
-        if (strncmp(arg, g_ptr->prefix, strlen(g_ptr->prefix)) == 0)
+        if (strncmp(arg, grp.prefix, strlen(grp.prefix)) == 0)
             return g_idx;
     }
 
@@ -432,7 +443,7 @@ static int MatchingGroup_(struct UnifiedData_ data[static 1], char *arg)
     Should the assigner of this flag config is mandatory?
  */
 static bool ShouldFlagTypeHaveParam_(
-    struct UnifiedData_ data[static 1], struct ArgpxFlagGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
+    struct UnifiedData_ data[static 1], struct ArgpxGroupItem group_ptr[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
     switch (conf_ptr->action_type) {
     case kArgpxActionSetMemory:
@@ -465,16 +476,16 @@ static bool ShouldFlagTypeHaveParam_(
 
     If "shortest" is true, then shortest matching flag name and ignore tail
  */
-static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
+static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
 {
     bool tail_limit = max_name_len <= 0 ? false : true;
     // we may need to find the longest match
-    struct ArgpxFlag *final_conf_ptr = NULL;
+    struct ArgpxFlagItem *final_conf_ptr = NULL;
     int final_name_len = 0;
 
-    for (int conf_idx = 0; conf_idx < data->conf_c; conf_idx++) {
-        struct ArgpxFlag *conf_ptr = &data->confs[conf_idx];
+    for (int conf_idx = 0; conf_idx < data->conf.count; conf_idx++) {
+        struct ArgpxFlagItem *conf_ptr = &data->conf.ptr[conf_idx];
         if (conf_ptr->group_idx != grp->idx)
             continue;
 
@@ -519,7 +530,7 @@ static void ParseArgumentIndependent_(
 
     char *assigner_ptr;
     if (grp->assigner_toggle == true)
-        assigner_ptr = strstr(name_start, grp->ptr->assigner);
+        assigner_ptr = strstr(name_start, grp->item.assigner);
     else
         assigner_ptr = NULL;
 
@@ -529,16 +540,16 @@ static void ParseArgumentIndependent_(
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf_ptr = MatchingConf_(data, grp, name_start, name_len, false);
+    struct ArgpxFlagItem *conf_ptr = MatchingConf_(data, grp, name_start, name_len, false);
     // some check
     if (conf_ptr == NULL)
         ArgpxExit_(data, kArgpxStatusUnknownFlag);
-    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, grp->ptr, conf_ptr) == false)
+    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, &grp->item, conf_ptr) == false)
         ArgpxExit_(data, kArgpxStatusParamNoNeeded);
-    if (ShouldFlagTypeHaveParam_(data, grp->ptr, conf_ptr) == true) {
-        if (assigner_ptr != NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+    if (ShouldFlagTypeHaveParam_(data, &grp->item, conf_ptr) == true) {
+        if (assigner_ptr != NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
-        if (assigner_ptr == NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+        if (assigner_ptr == NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
     }
 
@@ -577,7 +588,7 @@ static void ParseArgumentComposable_(
     int remaining_len = strlen(arg) - grp->prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlag *conf = MatchingConf_(data, grp, base_ptr, 0, true);
+        struct ArgpxFlagItem *conf = MatchingConf_(data, grp, base_ptr, 0, true);
         if (conf == NULL)
             ArgpxExit_(data, kArgpxStatusUnknownFlag);
         int name_len = strlen(conf->name);
@@ -586,23 +597,23 @@ static void ParseArgumentComposable_(
         // some windows style...
         // if group attribute not set, next_prefix will always be NULL
         char *next_prefix = NULL;
-        if ((grp->ptr->attribute & ARGPX_ATTR_COMPOSABLE_NEED_PREFIX) != 0)
-            next_prefix = strstr(base_ptr, grp->ptr->prefix);
+        if ((grp->item.attribute & ARGPX_ATTR_COMPOSABLE_NEED_PREFIX) != 0)
+            next_prefix = strstr(base_ptr, grp->item.prefix);
 
         // parameter stuff
         char *param_start = base_ptr + name_len;
-        bool conf_have_param = ShouldFlagTypeHaveParam_(data, grp->ptr, conf);
+        bool conf_have_param = ShouldFlagTypeHaveParam_(data, &grp->item, conf);
 
         bool assigner_exist;
         // is the assigner exist?
         if (grp->assigner_toggle == true)
-            assigner_exist = strncmp(param_start, grp->ptr->assigner, grp->assigner_len) == 0;
+            assigner_exist = strncmp(param_start, grp->item.assigner, grp->assigner_len) == 0;
         else
             assigner_exist = false;
 
         if (assigner_exist == true and conf_have_param == false)
             ArgpxExit_(data, kArgpxStatusParamNoNeeded);
-        if (assigner_exist == true and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
+        if (assigner_exist == true and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowAssigner);
 
         if (assigner_exist == true) {
@@ -626,10 +637,10 @@ static void ParseArgumentComposable_(
         }
 
         // and do some check
-        if (param_start == NULL and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
+        if (param_start == NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowArg);
         if (param_start != NULL and assigner_exist == false
-            and (grp->ptr->attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
+            and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
             ArgpxExit_(data, kArgpxStatusAssignmentDisallowTrailing);
 
         switch (conf->action_type) {
@@ -679,11 +690,9 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         .ErrorCallback = func.ErrorCallback,
         .arg_c = func.argc,
         .args = func.argv,
-        .arg_idx = func.argc_base,
-        .groups = func.groupv,
-        .group_c = func.groupc,
-        .conf_c = func.flagc,
-        .confs = func.flagv,
+        .arg_idx = 0,
+        .group = *func.group,
+        .conf = *func.flag,
         .terminate = func.terminate,
         .stop_parsing = func.stop_parsing,
         .stop_parsing_status = false,
@@ -693,7 +702,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
         ArgpxExit_(&data, kArgpxStatusFailure);
     *data.res = (struct ArgpxResult){.status = kArgpxStatusSuccess, .argc = data.arg_c, .argv = data.args};
 
-    for (; data.arg_idx < data.arg_c == true; data.arg_idx++) {
+    for (; data.arg_idx < data.arg_c; data.arg_idx++) {
         // update index record
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
@@ -711,22 +720,22 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
             else
                 continue;
         }
-        grp.ptr = &data.groups[grp.idx];
+        grp.item = data.group.ptr[grp.idx];
 
-        grp.prefix_len = strlen(grp.ptr->prefix);
+        grp.prefix_len = strlen(grp.item.prefix);
 
         // empty string checks
-        grp.assigner_toggle = grp.ptr->assigner != NULL ? true : false;
-        grp.assigner_len = grp.assigner_toggle == true ? strlen(grp.ptr->assigner) : 0;
-        if (grp.assigner_len == 0 and grp.assigner_toggle == true)
+        grp.assigner_toggle = grp.item.assigner != NULL;
+        grp.assigner_len = grp.assigner_toggle == true ? strlen(grp.item.assigner) : 0;
+        if (grp.assigner_toggle == true and grp.assigner_len == 0)
             ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
-        grp.delimiter_toggle = grp.ptr->delimiter != NULL ? true : false;
-        grp.delimiter_len = grp.delimiter_toggle == true ? strlen(grp.ptr->delimiter) : 0;
-        if (grp.delimiter_len == 0 and grp.delimiter_toggle == true)
+        grp.delimiter_toggle = grp.item.delimiter != NULL;
+        grp.delimiter_len = grp.delimiter_toggle == true ? strlen(grp.item.delimiter) : 0;
+        if (grp.delimiter_toggle == true and grp.delimiter_len == 0)
             ArgpxExit_(&data, kArgpxStatusGroupConfigInvalid);
 
-        if ((grp.ptr->attribute & ARGPX_ATTR_COMPOSABLE) != 0)
+        if ((grp.item.attribute & ARGPX_ATTR_COMPOSABLE) != 0)
             ParseArgumentComposable_(&data, &grp, arg);
         else
             ParseArgumentIndependent_(&data, &grp, arg);
