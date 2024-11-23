@@ -138,8 +138,9 @@ int main(int argc, char *argv[])
     });
 
     struct ArgpxResult *res = ArgpxMain((struct ArgpxMainOption){
-        .argc = argc,
-        .argv = argv,
+        // skip first arg
+        .argc = argc - 1,
+        .argv = argv + 1,
         .group = &group,
         .flag = &flag,
         .terminate.method = kArgpxTerminateNone,

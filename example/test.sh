@@ -51,7 +51,7 @@ function AssertFailure {
     fi
 }
 
-test_exec=./test.out
+test_exec='./test.out'
 
 AssertSuccess $test_exec param1 param2 paramEnd
 AssertFailure $test_exec --ffff
