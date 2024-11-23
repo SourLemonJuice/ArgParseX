@@ -5,10 +5,6 @@
 
 #include "argpx/argpx.h"
 
-#if ARGPX_VERSION_MAJOR != 0
-    #error ArgParseX major version mismatch
-#endif
-
 static void Error_(struct ArgpxResult *res)
 {
     printf("Error, parser status: %d\n", res->status);
