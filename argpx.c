@@ -24,11 +24,9 @@ struct UnifiedData_ {
     // the arg index being processed, it records the first unprocessed arg.
     // no no no, try to make it to record the last processed arg
     int arg_idx;
-    struct ArgpxGroupSet group;
+    struct ArgpxStyle style;
     struct ArgpxFlagSet conf;
     struct ArgpxTerminateMethod terminate;
-    char *stop_parsing;
-    bool stop_parsing_status;
 };
 
 struct UnifiedGroupCache_ {
@@ -117,12 +115,19 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     }
 }
 
-void ArgpxAppendGroup(struct ArgpxGroupSet set[static 1], const struct ArgpxGroupItem new[static 1])
+void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroupItem new[static 1])
 {
-    set->count += 1;
+    style->group_c += 1;
 
-    set->ptr = realloc(set->ptr, sizeof(struct ArgpxGroupItem[set->count]));
-    set->ptr[set->count - 1] = *new;
+    style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroupItem[style->group_c]));
+    style->group_v[style->group_c - 1] = *new;
+}
+
+void ArgpxAppendStopSymbol(struct ArgpxStyle style[static 1], char symbol[static 1])
+{
+    style->stop_c += 1;
+    style->stop_v = realloc(style->stop_v, style->stop_c);
+    style->stop_v[style->stop_c - 1] = symbol;
 }
 
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1])
@@ -438,8 +443,8 @@ static int MatchingGroup_(struct UnifiedData_ data[static 1], char arg[static 1]
 {
     struct ArgpxGroupItem grp;
     int no_prefix_group_idx = -1;
-    for (int g_idx = 0; g_idx < data->group.count; g_idx++) {
-        grp = data->group.ptr[g_idx];
+    for (int g_idx = 0; g_idx < data->style.group_c; g_idx++) {
+        grp = data->style.group_v[g_idx];
 
         if (grp.prefix[0] == '\0')
             no_prefix_group_idx = g_idx;
@@ -534,6 +539,16 @@ static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], s
     if (final_conf_ptr == NULL)
         argpx_errno = kArgpxStatusUnknownFlag;
     return final_conf_ptr;
+}
+
+static bool MatchingStopSymbol_(char *target, int stop_c, char **stop_v)
+{
+    for (int i = 0; i < stop_c; i++) {
+        if (strcmp(target, stop_v[i]) == 0)
+            return true;
+    }
+
+    return false;
 }
 
 /*
@@ -726,18 +741,16 @@ static int ParseArgumentComposable_(
 
     return NULL: result structure can't allocated.
  */
-struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
+struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
 {
     struct UnifiedData_ data = {
         .res = malloc(sizeof(struct ArgpxResult)),
-        .arg_c = func.argc,
-        .args = func.argv,
+        .arg_c = func->argc,
+        .args = func->argv,
         .arg_idx = 0,
-        .group = *func.group,
-        .conf = *func.flag,
-        .terminate = func.terminate,
-        .stop_parsing = func.stop_parsing,
-        .stop_parsing_status = false,
+        .style = *func->style,
+        .conf = *func->flag,
+        .terminate = func->terminate,
     };
 
     if (data.res == NULL) {
@@ -746,17 +759,20 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
     }
     *data.res = (struct ArgpxResult){.status = kArgpxStatusSuccess};
 
+    bool stop_parsing = false;
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
         // update index record
         data.res->current_argv_idx = data.arg_idx;
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
         char *arg = data.args[data.arg_idx];
-        if (strcmp(arg, data.stop_parsing) == 0)
-            data.stop_parsing_status = true;
+        if (MatchingStopSymbol_(arg, data.style.stop_c, data.style.stop_v) == true) {
+            stop_parsing = true;
+            continue;
+        }
 
         struct UnifiedGroupCache_ grp = {0};
-        grp.idx = data.stop_parsing_status == false ? MatchingGroup_(&data, arg) : -1; // TODO error throw
+        grp.idx = stop_parsing == false ? MatchingGroup_(&data, arg) : -1; // TODO error throw
 
         if (grp.idx < 0) {
             if (AppendCommandParameter_(&data, arg) > 0) // TODO error throw
@@ -764,7 +780,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func)
             else
                 continue;
         }
-        grp.item = data.group.ptr[grp.idx];
+        grp.item = data.style.group_v[grp.idx];
 
         grp.prefix_len = strlen(grp.item.prefix);
 

@@ -67,9 +67,14 @@ struct ArgpxGroupItem {
     char *delimiter;
 };
 
-struct ArgpxGroupSet {
-    int count;
-    struct ArgpxGroupItem *ptr;
+struct ArgpxStyle {
+    int group_c;
+    struct ArgpxGroupItem *group_v;
+    // stop parsing symbol count
+    // like "--" or "-"
+    int stop_c;
+    // stop parsing symbol array
+    char **stop_v;
 };
 
 enum ArgpxVarType {
@@ -185,16 +190,15 @@ struct ArgpxTerminateMethod {
 struct ArgpxMainOption {
     int argc;
     char **argv;
-    struct ArgpxGroupSet *group;
+    struct ArgpxStyle *style;
     struct ArgpxFlagSet *flag;
     struct ArgpxTerminateMethod terminate;
-    // stop parsing symbol, like "--" or "--%"
-    char *stop_parsing;
 };
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
-void ArgpxAppendGroup(struct ArgpxGroupSet set[static 1], const struct ArgpxGroupItem new[static 1]);
+void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroupItem new[static 1]);
+void ArgpxAppendStopSymbol(struct ArgpxStyle style[static 1], char symbol[static 1]);
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
-struct ArgpxResult *ArgpxMain(struct ArgpxMainOption func_params);
+struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func);
 
 #endif

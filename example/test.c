@@ -44,22 +44,25 @@ int main(int argc, char *argv[])
 
     // clang-format off
 
-    struct ArgpxGroupSet group = {0};
-    ArgpxAppendGroup(&group, ARGPX_BUILTIN_GROUP_GNU);
+    struct ArgpxStyle style = {0};
+    ArgpxAppendGroup(&style, ARGPX_BUILTIN_GROUP_GNU);
     // https://stackoverflow.com/a/11152199/25416550
     // other element will be initialized implicitly
-    ArgpxAppendGroup(&group, &(struct ArgpxGroupItem){
+    ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
         .prefix = "++",
         .assigner = "~",
         .delimiter = "-",
     });
-    ArgpxAppendGroup(&group, ARGPX_BUILTIN_GROUP_UNIX);
-    ArgpxAppendGroup(&group, &(struct ArgpxGroupItem){
+    ArgpxAppendGroup(&style, ARGPX_BUILTIN_GROUP_UNIX);
+    ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
         .prefix = "/",
         .assigner = "=",
         .delimiter = ",",
         .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_COMPOSABLE_NEED_PREFIX,
     });
+
+    ArgpxAppendStopSymbol(&style, "--");
+    ArgpxAppendStopSymbol(&style, "-");
 
     struct ArgpxFlagSet flag = {0};
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
@@ -137,16 +140,15 @@ int main(int argc, char *argv[])
         .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_str31},
     });
 
-    struct ArgpxResult *res = ArgpxMain((struct ArgpxMainOption){
+    struct ArgpxResult *res = ArgpxMain(&(struct ArgpxMainOption){
         // skip first arg
         .argc = argc - 1,
         .argv = argv + 1,
-        .group = &group,
+        .style = &style,
         .flag = &flag,
         .terminate.method = kArgpxTerminateNone,
         // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
         // .terminate.load.num_of_cmd_param.limit = 2,
-        .stop_parsing = "--",
     });
 
     // clang-format on
