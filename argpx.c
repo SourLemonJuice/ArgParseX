@@ -9,7 +9,7 @@
 #include <string.h>
 
 // like errno, non public
-static enum ArgpxStatus argpx_errno = kArgpxStatusSuccess;
+static enum ArgpxStatus argpx_errno;
 
 /*
     An unified data of this library
@@ -743,6 +743,8 @@ static int ParseArgumentComposable_(
  */
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
 {
+    argpx_errno = kArgpxStatusSuccess;
+
     struct UnifiedData_ data = {
         .res = malloc(sizeof(struct ArgpxResult)),
         .arg_c = func->argc,
@@ -788,10 +790,9 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         grp.assigner_toggle = grp.item.assigner != NULL;
         grp.assigner_len = grp.assigner_toggle == true ? strlen(grp.item.assigner) : 0;
 
-        // TODO a bit long
+        // don't need update argpx_errno here
         if (grp.assigner_toggle == true and grp.assigner_len == 0) {
-            argpx_errno = kArgpxStatusGroupConfigInvalid;
-            data.res->status = argpx_errno;
+            data.res->status = kArgpxStatusGroupConfigInvalid;
             return data.res;
         }
 
@@ -799,8 +800,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         grp.delimiter_len = grp.delimiter_toggle == true ? strlen(grp.item.delimiter) : 0;
 
         if (grp.delimiter_toggle == true and grp.delimiter_len == 0) {
-            argpx_errno = kArgpxStatusGroupConfigInvalid;
-            data.res->status = argpx_errno;
+            data.res->status = kArgpxStatusGroupConfigInvalid;
             return data.res;
         }
 

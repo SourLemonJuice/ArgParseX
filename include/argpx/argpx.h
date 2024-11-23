@@ -168,6 +168,7 @@ extern const struct ArgpxGroupItem argpx_hidden_builtin_group[kArgpxHidden_Built
 #define ARGPX_BUILTIN_GROUP_GNU &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
 #define ARGPX_BUILTIN_GROUP_UNIX &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
 
+// TODO aaa... it's works
 enum ArgpxHidden_TerminateMethod {
     kArgpxTerminateNone,
     kArgpxTerminateAtNumberOfCommandParam,
