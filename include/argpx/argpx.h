@@ -61,14 +61,24 @@ struct ArgpxGroupItem {
     char *delimiter;
 };
 
+enum ArgpxKeySymbolType {
+    kArgpxSymbolStopParsing,
+};
+
+struct ArgpxKeySymbolItem {
+    // key symbol array
+    char *str;
+    // key symbol type array
+    enum ArgpxKeySymbolType type;
+};
+
 struct ArgpxStyle {
     int group_c;
     struct ArgpxGroupItem *group_v;
-    // stop parsing symbol count
-    // like "--" or "-"
-    int stop_c;
-    // stop parsing symbol array
-    char **stop_v;
+    // key symbol count
+    // for example, StopParsing symbol may like "--" or "-"
+    int symbol_c;
+    struct ArgpxKeySymbolItem *symbol_v;
 };
 
 enum ArgpxVarType {
@@ -192,7 +202,7 @@ struct ArgpxMainOption {
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
 void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroupItem new[static 1]);
-void ArgpxAppendStopSymbol(struct ArgpxStyle style[static 1], char symbol[static 1]);
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxKeySymbolItem new[static 1]);
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func);
 

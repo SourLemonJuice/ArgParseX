@@ -123,11 +123,11 @@ void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup
     style->group_v[style->group_c - 1] = *new;
 }
 
-void ArgpxAppendStopSymbol(struct ArgpxStyle style[static 1], char symbol[static 1])
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxKeySymbolItem new[static 1])
 {
-    style->stop_c += 1;
-    style->stop_v = realloc(style->stop_v, style->stop_c);
-    style->stop_v[style->stop_c - 1] = symbol;
+    style->symbol_c += 1;
+    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxKeySymbolItem[style->symbol_c]));
+    style->symbol_v[style->symbol_c - 1] = *new;
 }
 
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1])
@@ -541,10 +541,10 @@ static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], s
     return final_conf_ptr;
 }
 
-static bool MatchingStopSymbol_(char *target, int stop_c, char **stop_v)
+static bool MatchingSymbol_(char *target, int sym_c, struct ArgpxKeySymbolItem *sym_v)
 {
-    for (int i = 0; i < stop_c; i++) {
-        if (strcmp(target, stop_v[i]) == 0)
+    for (int i = 0; i < sym_c; i++) {
+        if (strcmp(target, sym_v[i].str) == 0)
             return true;
     }
 
@@ -768,15 +768,15 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
         char *arg = data.args[data.arg_idx];
-        if (MatchingStopSymbol_(arg, data.style.stop_c, data.style.stop_v) == true) {
+        if (MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v) == true) {
             stop_parsing = true;
             continue;
         }
 
         struct UnifiedGroupCache_ grp = {0};
-        grp.idx = stop_parsing == false ? MatchingGroup_(&data, arg) : -1; // TODO error throw
+        grp.idx = MatchingGroup_(&data, arg); // TODO error throw
 
-        if (grp.idx < 0) {
+        if (grp.idx < 0 or stop_parsing == true) {
             if (AppendCommandParameter_(&data, arg) > 0) // TODO error throw
                 return data.res;
             else

@@ -57,8 +57,14 @@ int main(int argc, char *argv[])
         .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_COMPOSABLE_NEED_PREFIX,
     });
 
-    ArgpxAppendStopSymbol(&style, "--");
-    ArgpxAppendStopSymbol(&style, "-");
+    ArgpxAppendSymbol(&style, &(struct ArgpxKeySymbolItem){
+        .str = "--",
+        .type = kArgpxSymbolStopParsing,
+    });
+    ArgpxAppendSymbol(&style, &(struct ArgpxKeySymbolItem){
+        .str = "-",
+        .type = kArgpxSymbolStopParsing,
+    });
 
     struct ArgpxFlagSet flag = {0};
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
