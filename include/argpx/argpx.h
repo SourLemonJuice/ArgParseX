@@ -35,6 +35,8 @@ enum ArgpxActionType {
     // like SetBool, maybe enum need it.
     // note: this action just uses the "int" type
     kArgpxActionSetInt,
+    // TODO
+    kArgpxActionCallback,
 };
 
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
@@ -63,6 +65,8 @@ struct ArgpxGroupItem {
 
 enum ArgpxKeySymbolType {
     kArgpxSymbolStopParsing,
+    kArgpxSymbolTerminateProcessing, // TODO
+    kArgpxSymbolCallback,            // TODO
 };
 
 struct ArgpxKeySymbolItem {
@@ -169,8 +173,14 @@ enum ArgpxHidden_BuiltinGroup {
 
 extern const struct ArgpxGroupItem argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount];
 
-#define ARGPX_BUILTIN_GROUP_GNU &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
-#define ARGPX_BUILTIN_GROUP_UNIX &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
+#define ARGPX_GROUP_GNU &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
+#define ARGPX_GROUP_UNIX &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
+
+#define ARGPX_SYMBOL_STOP_PARSING(str_in) \
+    &(struct ArgpxKeySymbolItem) \
+    { \
+        .str = str_in, .type = kArgpxSymbolStopParsing, \
+    }
 
 // TODO aaa... it's works
 enum ArgpxHidden_TerminateMethod {

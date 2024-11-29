@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     // clang-format off
 
     struct ArgpxStyle style = {0};
-    ArgpxAppendGroup(&style, ARGPX_BUILTIN_GROUP_GNU);
+    ArgpxAppendGroup(&style, ARGPX_GROUP_GNU);
     // https://stackoverflow.com/a/11152199/25416550
     // other element will be initialized implicitly
     ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         .assigner = "~",
         .delimiter = "-",
     });
-    ArgpxAppendGroup(&style, ARGPX_BUILTIN_GROUP_UNIX);
+    ArgpxAppendGroup(&style, ARGPX_GROUP_UNIX);
     ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
         .prefix = "/",
         .assigner = "=",
@@ -57,14 +57,8 @@ int main(int argc, char *argv[])
         .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_COMPOSABLE_NEED_PREFIX,
     });
 
-    ArgpxAppendSymbol(&style, &(struct ArgpxKeySymbolItem){
-        .str = "--",
-        .type = kArgpxSymbolStopParsing,
-    });
-    ArgpxAppendSymbol(&style, &(struct ArgpxKeySymbolItem){
-        .str = "-",
-        .type = kArgpxSymbolStopParsing,
-    });
+    ArgpxAppendSymbol(&style, ARGPX_SYMBOL_STOP_PARSING("--"));
+    ArgpxAppendSymbol(&style, ARGPX_SYMBOL_STOP_PARSING("-"));
 
     struct ArgpxFlagSet flag = {0};
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){

@@ -75,14 +75,14 @@ ArgParseX 打算提供一些常见的组配置作为默认选项，不过如果�
 
 |风格名称|宏|例子|
 |--|--|--|
-|GNU|`ARGPX_BUILTIN_GROUP_GNU`|`--test=param1,param2`|
-|Unix|`ARGPX_BUILTIN_GROUP_UNIX`|`-A -B=str1,str2 -ABstr1,str2`|
+|GNU|`ARGPX_GROUP_GNU`|`--test=param1,param2`|
+|Unix|`ARGPX_GROUP_UNIX`|`-A -B=str1,str2 -ABstr1,str2`|
 
 它们都会被扩展为一个 `struct ArgpxFlagGroup` 结构体（不是指针），这是我所想的使用方法：
 
 ```c
 struct ArgpxFlagGroup group[] = {
-    ARGPX_BUILTIN_GROUP_GNU,
+    ARGPX_GROUP_GNU,
     {
         .attribute = 0,
         .prefix = "else",
