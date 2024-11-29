@@ -1,5 +1,7 @@
 # 标志/Flag
 
+> 需要大幅更新
+
 主要参见 [example/test.c](../example/test.c) 中与 `struct ArgpxFlag` 相关的部分
 
 ## 动作/Action
