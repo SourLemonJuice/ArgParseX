@@ -39,25 +39,6 @@ struct UnifiedGroupCache_ {
     int delimiter_toggle;
 };
 
-// it would be ugly to write it directly to macro.
-// TODO but it's also not beautiful.
-const struct ArgpxGroupItem argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount] = {
-    [kArgpxHidden_BuiltinGroupGnu] =
-        {
-            .prefix = "--",
-            .assigner = "=",
-            .delimiter = ",",
-            .attribute = 0,
-        },
-    [kArgpxHidden_BuiltinGroupUnix] =
-        {
-            .prefix = "-",
-            .assigner = "=",
-            .delimiter = ",",
-            .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG,
-        },
-};
-
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack
  */
@@ -82,6 +63,8 @@ static char *strnstr_(char haystack[const restrict static 1], char needle[const 
 
 /*
     Convert structure ArgpxResult's ArgpxStatus enum to string
+
+    // TODO change name
  */
 char *ArgpxStatusToString(enum ArgpxStatus status)
 {
@@ -432,6 +415,12 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlagIt
     *ptr->target_ptr = ptr->source;
 }
 
+static void ActionCallback_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
+{
+    struct ArgpxHidden_OutcomeCallback *ptr = &conf_ptr->action_load.callback;
+    ptr->callback(ptr->param);
+}
+
 /*
     Detect the group where the argument is located.
     A group index will be returned. Use GroupIndexToPointer_() convert it to a pointer.
@@ -469,6 +458,7 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], struct 
     case kArgpxActionSetMemory:
     case kArgpxActionSetBool:
     case kArgpxActionSetInt:
+    case kArgpxActionCallback:
         return false;
     case kArgpxActionParamSingle:
     case kArgpxActionParamMulti:
@@ -541,14 +531,18 @@ static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], s
     return final_conf_ptr;
 }
 
-static bool MatchingSymbol_(char *target, int sym_c, struct ArgpxKeySymbolItem *sym_v)
+/*
+    Return matched symbol item index of sym_v.
+    Return negative num is not match.
+ */
+static int MatchingSymbol_(char *target, int sym_c, struct ArgpxKeySymbolItem *sym_v)
 {
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
-            return true;
+            return sym_c;
     }
 
-    return false;
+    return -1;
 }
 
 /*
@@ -616,6 +610,9 @@ static int ParseArgumentIndependent_(
         break;
     case kArgpxActionSetInt:
         ActionSetInt_(data, conf_ptr);
+        break;
+    case kArgpxActionCallback:
+        ActionCallback_(data, conf_ptr);
         break;
     }
 
@@ -719,6 +716,9 @@ static int ParseArgumentComposable_(
         case kArgpxActionSetInt:
             ActionSetInt_(data, conf);
             break;
+        case kArgpxActionCallback:
+            ActionCallback_(data, conf);
+            break;
         }
 
         // update base_ptr
@@ -768,9 +768,19 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         data.res->current_argv_ptr = data.args[data.arg_idx];
 
         char *arg = data.args[data.arg_idx];
-        if (MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v) == true) {
-            stop_parsing = true;
-            continue;
+        int symbol_idx = MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
+        if (symbol_idx >= 0) {
+            struct ArgpxKeySymbolItem *sym = &data.style.symbol_v[symbol_idx];
+            switch (sym->type) {
+            case kArgpxSymbolStopParsing:
+                stop_parsing = true;
+                continue;
+            case kArgpxSymbolTerminateProcessing:
+                return data.res;
+            case kArgpxSymbolCallback:
+                sym->callback(sym->callback_param);
+                continue;
+            }
         }
 
         struct UnifiedGroupCache_ grp = {0};
@@ -785,6 +795,8 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         grp.item = data.style.group_v[grp.idx];
 
         grp.prefix_len = strlen(grp.item.prefix);
+
+        // TODO update those check
 
         // empty string checks
         grp.assigner_toggle = grp.item.assigner != NULL;

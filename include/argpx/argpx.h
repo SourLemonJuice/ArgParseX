@@ -35,7 +35,6 @@ enum ArgpxActionType {
     // like SetBool, maybe enum need it.
     // note: this action just uses the "int" type
     kArgpxActionSetInt,
-    // TODO
     kArgpxActionCallback,
 };
 
@@ -65,8 +64,8 @@ struct ArgpxGroupItem {
 
 enum ArgpxKeySymbolType {
     kArgpxSymbolStopParsing,
-    kArgpxSymbolTerminateProcessing, // TODO
-    kArgpxSymbolCallback,            // TODO
+    kArgpxSymbolTerminateProcessing,
+    kArgpxSymbolCallback,
 };
 
 struct ArgpxKeySymbolItem {
@@ -74,6 +73,8 @@ struct ArgpxKeySymbolItem {
     char *str;
     // key symbol type array
     enum ArgpxKeySymbolType type;
+    void (*callback)(void *param);
+    void *callback_param;
 };
 
 struct ArgpxStyle {
@@ -128,6 +129,11 @@ struct ArgpxHidden_OutcomeSetInt {
     int *target_ptr;
 };
 
+struct ArgpxHidden_OutcomeCallback {
+    void (*callback)(void *param);
+    void *param;
+};
+
 // in library source code it is called "conf/config"
 struct ArgpxFlagItem {
     // It's an index not an id
@@ -145,6 +151,7 @@ struct ArgpxFlagItem {
         struct ArgpxHidden_OutcomeSetMemory set_memory;
         struct ArgpxHidden_OutcomeSetBool set_bool;
         struct ArgpxHidden_OutcomeSetInt set_int;
+        struct ArgpxHidden_OutcomeCallback callback;
     } action_load;
 };
 
@@ -164,23 +171,6 @@ struct ArgpxResult {
     // an array of command parameters
     char **paramv;
 };
-
-enum ArgpxHidden_BuiltinGroup {
-    kArgpxHidden_BuiltinGroupGnu,
-    kArgpxHidden_BuiltinGroupUnix,
-    kArgpxHidden_BuiltinGroupCount,
-};
-
-extern const struct ArgpxGroupItem argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupCount];
-
-#define ARGPX_GROUP_GNU &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupGnu]
-#define ARGPX_GROUP_UNIX &argpx_hidden_builtin_group[kArgpxHidden_BuiltinGroupUnix]
-
-#define ARGPX_SYMBOL_STOP_PARSING(str_in) \
-    &(struct ArgpxKeySymbolItem) \
-    { \
-        .str = str_in, .type = kArgpxSymbolStopParsing, \
-    }
 
 // TODO aaa... it's works
 enum ArgpxHidden_TerminateMethod {
@@ -215,5 +205,39 @@ void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroupIt
 void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxKeySymbolItem new[static 1]);
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func);
+
+/*
+    Shortcuts
+ */
+
+// clang-format off
+
+enum ArgpxHidden_BuiltinGroup {
+    kArgpxHidden_BuiltinGroupGnu,
+    kArgpxHidden_BuiltinGroupUnix,
+    kArgpxHidden_BuiltinGroupCount,
+};
+
+#define ARGPX_GROUP_GNU &(const struct ArgpxGroupItem){ \
+        .prefix = "--", \
+        .assigner = "=", \
+        .delimiter = ",", \
+        .attribute = 0, \
+    }
+
+#define ARGPX_GROUP_UNIX &(const struct ArgpxGroupItem){ \
+        .prefix = "-", \
+        .assigner = "=", \
+        .delimiter = ",", \
+        .attribute = ARGPX_ATTR_COMPOSABLE | ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG, \
+    }
+
+#define ARGPX_SYMBOL_STOP_PARSING(str_in) \
+    &(struct ArgpxKeySymbolItem){ \
+        .str = str_in, \
+        .type = kArgpxSymbolStopParsing, \
+    }
+
+// clang-format on
 
 #endif
