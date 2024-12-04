@@ -9,6 +9,7 @@
 #include <string.h>
 
 // like errno, non public
+// TODO unsafe and inconsistent
 static enum ArgpxStatus argpx_errno;
 
 /*
@@ -245,6 +246,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
 
 /*
     If param_len <= 0 then no limit.
+    If param_start is NULL, shift to the next argument.
 
     return negative: error
  */
@@ -252,6 +254,12 @@ static int ActionParamSingle_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf[static 1], char *param_start, int param_len)
 {
     struct ArgpxParamUnit *unit_ptr = &conf->action_load.param_single;
+
+    if (param_start == NULL)
+        param_start = ShiftArguments_(data, 1);
+    if (param_start == NULL)
+        return -1;
+
     if (param_len <= 0)
         param_len = strlen(param_start);
 
