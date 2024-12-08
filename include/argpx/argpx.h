@@ -35,7 +35,6 @@ enum ArgpxActionType {
     // like SetBool, maybe enum need it.
     // note: this action just uses the "int" type
     kArgpxActionSetInt,
-    kArgpxActionCallback,
 };
 
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
@@ -62,17 +61,17 @@ struct ArgpxGroupItem {
     char *delimiter;
 };
 
-enum ArgpxKeySymbolType {
+enum ArgpxSymbolType {
     kArgpxSymbolStopParsing,
     kArgpxSymbolTerminateProcessing,
     kArgpxSymbolCallback,
 };
 
-struct ArgpxKeySymbolItem {
+struct ArgpxSymbolItem {
     // key symbol array
     char *str;
     // key symbol type array
-    enum ArgpxKeySymbolType type;
+    enum ArgpxSymbolType type;
     void (*callback)(void *param);
     void *callback_param;
 };
@@ -83,7 +82,7 @@ struct ArgpxStyle {
     // key symbol count
     // for example, StopParsing symbol may like "--" or "-"
     int symbol_c;
-    struct ArgpxKeySymbolItem *symbol_v;
+    struct ArgpxSymbolItem *symbol_v;
 };
 
 enum ArgpxVarType {
@@ -96,42 +95,37 @@ enum ArgpxVarType {
 };
 
 // Convert a string in flag's parameter
-struct ArgpxParamUnit {
+struct ArgpxOutParamSingle {
     enum ArgpxVarType type;
     // a list of pointer of actual variable
     void *ptr;
 };
 
-struct ArgpxHidden_OutcomeParamMulti {
+struct ArgpxOutParamMulti {
     int count;
     // format units array
-    struct ArgpxParamUnit *units;
+    struct ArgpxOutParamSingle *units;
 };
 
-struct ArgpxHidden_OutcomeParamList {
+struct ArgpxOutParamList {
     int *count;
     char ***params; // pointer to a pointer list to a string list...
 };
 
-struct ArgpxHidden_OutcomeSetMemory {
+struct ArgpxOutSetMemory {
     size_t size;
     void *source_ptr;
     void *target_ptr;
 };
 
-struct ArgpxHidden_OutcomeSetBool {
+struct ArgpxOutSetBool {
     bool source;
     bool *target_ptr;
 };
 
-struct ArgpxHidden_OutcomeSetInt {
+struct ArgpxOutSetInt {
     int source;
     int *target_ptr;
-};
-
-struct ArgpxHidden_OutcomeCallback {
-    void (*callback)(void *param);
-    void *param;
 };
 
 // in library source code it is called "conf/config"
@@ -142,17 +136,20 @@ struct ArgpxFlagItem {
     int group_idx;
     // name of flag, like the "flagName" of "--flagName"
     char *name;
+
     // one flag only have one action, but one action may need to define mutiple structures.
     enum ArgpxActionType action_type;
     union {
-        struct ArgpxParamUnit param_single;
-        struct ArgpxHidden_OutcomeParamMulti param_multi;
-        struct ArgpxHidden_OutcomeParamList param_list;
-        struct ArgpxHidden_OutcomeSetMemory set_memory;
-        struct ArgpxHidden_OutcomeSetBool set_bool;
-        struct ArgpxHidden_OutcomeSetInt set_int;
-        struct ArgpxHidden_OutcomeCallback callback;
+        struct ArgpxOutParamSingle param_single;
+        struct ArgpxOutParamMulti param_multi;
+        struct ArgpxOutParamList param_list;
+        struct ArgpxOutSetMemory set_memory;
+        struct ArgpxOutSetBool set_bool;
+        struct ArgpxOutSetInt set_int;
     } action_load;
+
+    void (*callback)(void *action_load, void *param);
+    void *callback_param;
 };
 
 struct ArgpxFlagSet {
@@ -202,7 +199,7 @@ struct ArgpxMainOption {
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
 void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroupItem new[static 1]);
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxKeySymbolItem new[static 1]);
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbolItem new[static 1]);
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func);
 
@@ -233,7 +230,7 @@ enum ArgpxHidden_BuiltinGroup {
     }
 
 #define ARGPX_SYMBOL_STOP_PARSING(str_in) \
-    &(struct ArgpxKeySymbolItem){ \
+    &(struct ArgpxSymbolItem){ \
         .str = str_in, \
         .type = kArgpxSymbolStopParsing, \
     }

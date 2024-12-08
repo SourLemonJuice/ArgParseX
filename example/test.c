@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
         .action_type = kArgpxActionParamMulti,
         .action_load.param_multi.count = 2,
         .action_load.param_multi.units =
-            (struct ArgpxParamUnit[]){
+            (struct ArgpxOutParamSingle[]){
                 {.type = kArgpxVarString, .ptr = &test_str1},
                 {.type = kArgpxVarString, .ptr = &test_str2},
             },
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         .action_type = kArgpxActionParamMulti,
         .action_load.param_multi.count = 2,
         .action_load.param_multi.units =
-            (struct ArgpxParamUnit[]){
+            (struct ArgpxOutParamSingle[]){
                 {.type = kArgpxVarString, .ptr = &test_str21},
                 {.type = kArgpxVarString, .ptr = &test_str22},
             },

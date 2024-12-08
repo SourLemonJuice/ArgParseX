@@ -107,10 +107,10 @@ void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup
     style->group_v[style->group_c - 1] = *new;
 }
 
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxKeySymbolItem new[static 1])
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbolItem new[static 1])
 {
     style->symbol_c += 1;
-    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxKeySymbolItem[style->symbol_c]));
+    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbolItem[style->symbol_c]));
     style->symbol_v[style->symbol_c - 1] = *new;
 }
 
@@ -253,7 +253,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
 static int ActionParamSingle_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf[static 1], char *param_start, int param_len)
 {
-    struct ArgpxParamUnit *unit_ptr = &conf->action_load.param_single;
+    struct ArgpxOutParamSingle *unit_ptr = &conf->action_load.param_single;
 
     if (param_start == NULL)
         param_start = ShiftArguments_(data, 1);
@@ -286,7 +286,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     char *param_now;
     int remaining;
     for (int unit_idx = 0; unit_idx < conf->action_load.param_multi.count; unit_idx++) {
-        struct ArgpxParamUnit *unit = &conf->action_load.param_multi.units[unit_idx];
+        struct ArgpxOutParamSingle *unit = &conf->action_load.param_multi.units[unit_idx];
 
         if (unit_idx == 0) {
             param_now = param_base != NULL ? param_base : ShiftArguments_(data, 1);
@@ -330,7 +330,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     return negative: error
     TODO error check
  */
-static int AppendParamList_(struct ArgpxHidden_OutcomeParamList outcome[static 1], int last_idx, char *str, int str_len)
+static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last_idx, char *str, int str_len)
 {
     *outcome->count = last_idx + 1;
 
@@ -401,7 +401,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
  */
 static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
-    struct ArgpxHidden_OutcomeSetMemory *ptr = &conf_ptr->action_load.set_memory;
+    struct ArgpxOutSetMemory *ptr = &conf_ptr->action_load.set_memory;
     memcpy(ptr->target_ptr, ptr->source_ptr, ptr->size);
 }
 
@@ -410,7 +410,7 @@ static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFla
  */
 static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
-    struct ArgpxHidden_OutcomeSetBool *ptr = &conf_ptr->action_load.set_bool;
+    struct ArgpxOutSetBool *ptr = &conf_ptr->action_load.set_bool;
     *ptr->target_ptr = ptr->source;
 }
 
@@ -419,14 +419,8 @@ static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlagI
  */
 static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
 {
-    struct ArgpxHidden_OutcomeSetInt *ptr = &conf_ptr->action_load.set_int;
+    struct ArgpxOutSetInt *ptr = &conf_ptr->action_load.set_int;
     *ptr->target_ptr = ptr->source;
-}
-
-static void ActionCallback_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
-{
-    struct ArgpxHidden_OutcomeCallback *ptr = &conf_ptr->action_load.callback;
-    ptr->callback(ptr->param);
 }
 
 /*
@@ -466,7 +460,6 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], struct 
     case kArgpxActionSetMemory:
     case kArgpxActionSetBool:
     case kArgpxActionSetInt:
-    case kArgpxActionCallback:
         return false;
     case kArgpxActionParamSingle:
     case kArgpxActionParamMulti:
@@ -543,7 +536,7 @@ static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], s
     Return matched symbol item index of sym_v.
     Return negative num is not match.
  */
-static int MatchingSymbol_(char *target, int sym_c, struct ArgpxKeySymbolItem *sym_v)
+static int MatchingSymbol_(char *target, int sym_c, struct ArgpxSymbolItem *sym_v)
 {
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
@@ -576,15 +569,15 @@ static int ParseArgumentIndependent_(
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlagItem *conf_ptr = MatchingConf_(data, grp, name_start, name_len, false);
+    struct ArgpxFlagItem *conf = MatchingConf_(data, grp, name_start, name_len, false);
     // some check
-    if (conf_ptr == NULL)
+    if (conf == NULL)
         return -1;
-    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, &grp->item, conf_ptr) == false) {
+    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, &grp->item, conf) == false) {
         argpx_errno = kArgpxStatusParamNoNeeded;
         return -1;
     }
-    if (ShouldFlagTypeHaveParam_(data, &grp->item, conf_ptr) == true) {
+    if (ShouldFlagTypeHaveParam_(data, &grp->item, conf) == true) {
         if (assigner_ptr != NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
             argpx_errno = kArgpxStatusAssignmentDisallowAssigner;
             return -1;
@@ -597,32 +590,32 @@ static int ParseArgumentIndependent_(
 
     char *param_base = assigner_ptr != NULL ? assigner_ptr + grp->assigner_len : NULL;
     // get flag parameters
-    switch (conf_ptr->action_type) {
+    switch (conf->action_type) {
     case kArgpxActionParamSingle:
-        if (ActionParamSingle_(data, conf_ptr, param_base, 0) < 0)
+        if (ActionParamSingle_(data, conf, param_base, 0) < 0)
             return -1;
         break;
     case kArgpxActionParamMulti:
-        if (ActionParamMulti_(data, grp, conf_ptr, param_base, 0) < 0)
+        if (ActionParamMulti_(data, grp, conf, param_base, 0) < 0)
             return -1;
         break;
     case kArgpxActionParamList:
-        if (ActionParamList_(data, grp, conf_ptr, param_base, 0) < 0)
+        if (ActionParamList_(data, grp, conf, param_base, 0) < 0)
             return -1;
         break;
     case kArgpxActionSetMemory:
-        ActionSetMemory_(data, conf_ptr);
+        ActionSetMemory_(data, conf);
         break;
     case kArgpxActionSetBool:
-        ActionSetBool_(data, conf_ptr);
+        ActionSetBool_(data, conf);
         break;
     case kArgpxActionSetInt:
-        ActionSetInt_(data, conf_ptr);
-        break;
-    case kArgpxActionCallback:
-        ActionCallback_(data, conf_ptr);
+        ActionSetInt_(data, conf);
         break;
     }
+
+    if (conf->callback != NULL)
+        conf->callback(&conf->action_load, conf->callback_param);
 
     return 0;
 }
@@ -724,10 +717,10 @@ static int ParseArgumentComposable_(
         case kArgpxActionSetInt:
             ActionSetInt_(data, conf);
             break;
-        case kArgpxActionCallback:
-            ActionCallback_(data, conf);
-            break;
         }
+
+        if (conf->callback != NULL)
+            conf->callback(&conf->action_load, conf->callback_param);
 
         // update base_ptr
         // don't forget the prefix length in the NEED_PREFIX mode
@@ -778,7 +771,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         char *arg = data.args[data.arg_idx];
         int symbol_idx = MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
         if (symbol_idx >= 0) {
-            struct ArgpxKeySymbolItem *sym = &data.style.symbol_v[symbol_idx];
+            struct ArgpxSymbolItem *sym = &data.style.symbol_v[symbol_idx];
             switch (sym->type) {
             case kArgpxSymbolStopParsing:
                 stop_parsing = true;
