@@ -460,6 +460,7 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], struct 
     case kArgpxActionSetMemory:
     case kArgpxActionSetBool:
     case kArgpxActionSetInt:
+    case kArgpxActionCallbackOnly:
         return false;
     case kArgpxActionParamSingle:
     case kArgpxActionParamMulti:
@@ -540,7 +541,7 @@ static int MatchingSymbol_(char *target, int sym_c, struct ArgpxSymbolItem *sym_
 {
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
-            return sym_c;
+            return i;
     }
 
     return -1;
@@ -611,6 +612,8 @@ static int ParseArgumentIndependent_(
         break;
     case kArgpxActionSetInt:
         ActionSetInt_(data, conf);
+        break;
+    case kArgpxActionCallbackOnly:
         break;
     }
 
@@ -716,6 +719,8 @@ static int ParseArgumentComposable_(
             break;
         case kArgpxActionSetInt:
             ActionSetInt_(data, conf);
+            break;
+        case kArgpxActionCallbackOnly:
             break;
         }
 

@@ -9,3 +9,5 @@
 
 总之，现在原来的 `ArgpxHidden_Outcome...` 结构体被更名为了 `ArgpxOut...`。这也就是 `struct ArgpxFlagItem` 中 `.action_load` 所用到的结构体们。\
 它将作为 `void *` 指针的形式传入回调函数的第一个参数。
+
+如果当前标志不需要其他动作，而仅仅只需要调用一个回调函数。那么可以使用 `kArgpxActionCallbackOnly` 类型跳过中间层。

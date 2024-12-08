@@ -32,9 +32,11 @@ enum ArgpxActionType {
     kArgpxActionSetMemory,
     // the most common operation on the command line
     kArgpxActionSetBool,
-    // like SetBool, maybe enum need it.
+    // like SetBool, maybe enum need it
     // note: this action just uses the "int" type
     kArgpxActionSetInt,
+    // only run callback, no any outcome
+    kArgpxActionCallbackOnly,
 };
 
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
@@ -146,6 +148,9 @@ struct ArgpxFlagItem {
         struct ArgpxOutSetMemory set_memory;
         struct ArgpxOutSetBool set_bool;
         struct ArgpxOutSetInt set_int;
+        // no practical use, set to anything include NULL
+        // it's also will be passed to the callback function as the first param
+        void *callback_only;
     } action_load;
 
     void (*callback)(void *action_load, void *param);
