@@ -8,15 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-// like errno, non public
-// TODO unsafe and inconsistent
-static enum ArgpxStatus argpx_errno;
-
 /*
     An unified data of this library
  */
 struct UnifiedData_ {
     // the result structure of the main function
+    // this structure must not be on the stack
     struct ArgpxResult *res;
     // arguments count
     int arg_c;
@@ -126,12 +123,12 @@ void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagIt
     Using the offset shift arguments, it will be safe.
     Return a pointer to the new argument
 
-    return NULL: error
+    return NULL: error and set status
  */
 static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 {
     if (data->arg_idx + offset >= data->arg_c) {
-        argpx_errno = kArgpxStatusArgumentsDeficiency;
+        data->res->status = kArgpxStatusArgumentsDeficiency;
         return NULL;
     }
     data->arg_idx += offset;
@@ -248,7 +245,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
     If param_len <= 0 then no limit.
     If param_start is NULL, shift to the next argument.
 
-    return negative: error
+    return negative: error and set status
  */
 static int ActionParamSingle_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf[static 1], char *param_start, int param_len)
@@ -264,7 +261,7 @@ static int ActionParamSingle_(
         param_len = strlen(param_start);
 
     if (param_len <= 0) {
-        argpx_errno = kArgpxStatusParamDeficiency;
+        data->res->status = kArgpxStatusParamDeficiency;
         return -1;
     }
 
@@ -278,7 +275,7 @@ static int ActionParamSingle_(
 
     If range <= 0 then no limit
 
-    return negative: error
+    return negative: error and set status
  */
 static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     struct ArgpxFlagItem conf[static 1], char *param_base, int range)
@@ -301,7 +298,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
             if (unit_idx == conf->action_load.param_multi.count - 1) {
                 param_len = remaining;
             } else {
-                argpx_errno = kArgpxStatusParamDeficiency;
+                data->res->status = kArgpxStatusParamDeficiency;
                 return -1;
             }
         } else {
@@ -317,7 +314,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     // normally, "remaining" is negative. I didn't think to reuse it
 
     if (remaining >= 0) {
-        argpx_errno = kArgpxStatusParamBizarreFormat;
+        data->res->status = kArgpxStatusParamBizarreFormat;
         return -1;
     }
     return 0;
@@ -357,7 +354,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
 /*
     If max_param_len <= 0 then no limit
 
-    return negative: error
+    return negative: error and set status
  */
 static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     struct ArgpxFlagItem conf_ptr[static 1], char *param_start_ptr, int max_param_len)
@@ -378,7 +375,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
             param_len = delimiter_ptr - param_now;
             // delimiter shouldn't exist at the last parameter's tail
             if (param_len + grp->delimiter_len >= remaining_len) {
-                argpx_errno = kArgpxStatusParamBizarreFormat;
+                data->res->status = kArgpxStatusParamBizarreFormat;
                 return -1;
             }
         }
@@ -486,7 +483,7 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], struct 
 
     If "shortest" is true, then shortest matching flag name and ignore tail
 
-    return NULL: error
+    return NULL: error and set status
  */
 static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
@@ -529,7 +526,7 @@ static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], s
     }
 
     if (final_conf_ptr == NULL)
-        argpx_errno = kArgpxStatusUnknownFlag;
+        data->res->status = kArgpxStatusUnknownFlag;
     return final_conf_ptr;
 }
 
@@ -551,7 +548,7 @@ static int MatchingSymbol_(char *target, int sym_c, struct ArgpxSymbolItem *sym_
     Unlike composable mode, independent mode need to know the exact length of the flag name.
     So it must determine in advance if the assignment symbol exist.
 
-    return negative: error
+    return negative: error and set status
  */
 static int ParseArgumentIndependent_(
     struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
@@ -575,16 +572,16 @@ static int ParseArgumentIndependent_(
     if (conf == NULL)
         return -1;
     if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, &grp->item, conf) == false) {
-        argpx_errno = kArgpxStatusParamNoNeeded;
+        data->res->status = kArgpxStatusParamNoNeeded;
         return -1;
     }
     if (ShouldFlagTypeHaveParam_(data, &grp->item, conf) == true) {
         if (assigner_ptr != NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
-            argpx_errno = kArgpxStatusAssignmentDisallowAssigner;
+            data->res->status = kArgpxStatusAssignmentDisallowAssigner;
             return -1;
         }
         if (assigner_ptr == NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0) {
-            argpx_errno = kArgpxStatusAssignmentDisallowArg;
+            data->res->status = kArgpxStatusAssignmentDisallowArg;
             return -1;
         }
     }
@@ -624,7 +621,7 @@ static int ParseArgumentIndependent_(
 }
 
 /*
-    return negative: error
+    return negative: error and errno is set
  */
 static int ParseArgumentComposable_(
     struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
@@ -658,11 +655,11 @@ static int ParseArgumentComposable_(
             assigner_exist = false;
 
         if (assigner_exist == true and conf_have_param == false) {
-            argpx_errno = kArgpxStatusParamNoNeeded;
+            data->res->status = kArgpxStatusParamNoNeeded;
             return -1;
         }
         if (assigner_exist == true and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
-            argpx_errno = kArgpxStatusAssignmentDisallowAssigner;
+            data->res->status = kArgpxStatusAssignmentDisallowAssigner;
             return -1;
         }
 
@@ -688,13 +685,13 @@ static int ParseArgumentComposable_(
 
         // and do some check
         if (param_start == NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0) {
-            argpx_errno = kArgpxStatusAssignmentDisallowArg;
+            data->res->status = kArgpxStatusAssignmentDisallowArg;
             return -1;
         }
         if (param_start != NULL and assigner_exist == false
             and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
         {
-            argpx_errno = kArgpxStatusAssignmentDisallowTrailing;
+            data->res->status = kArgpxStatusAssignmentDisallowTrailing;
             return -1;
         }
 
@@ -749,8 +746,6 @@ static int ParseArgumentComposable_(
  */
 struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
 {
-    argpx_errno = kArgpxStatusSuccess;
-
     struct UnifiedData_ data = {
         .res = malloc(sizeof(struct ArgpxResult)),
         .arg_c = func->argc,
@@ -761,11 +756,9 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         .terminate = func->terminate,
     };
 
-    if (data.res == NULL) {
-        argpx_errno = kArgpxStatusFailure;
+    if (data.res == NULL)
         return NULL;
-    }
-    *data.res = (struct ArgpxResult){.status = kArgpxStatusSuccess};
+    data.res->status = kArgpxStatusSuccess;
 
     bool stop_parsing = false;
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
@@ -828,10 +821,8 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
         else
             ret = ParseArgumentIndependent_(&data, &grp, arg);
 
-        if (ret < 0) {
-            data.res->status = argpx_errno;
+        if (ret < 0)
             return data.res;
-        }
     }
 
     return data.res;

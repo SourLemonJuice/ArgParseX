@@ -99,7 +99,7 @@ enum ArgpxVarType {
 // Convert a string in flag's parameter
 struct ArgpxOutParamSingle {
     enum ArgpxVarType type;
-    // a list of pointer of actual variable
+    // a pointer to the actual variable
     void *ptr;
 };
 
