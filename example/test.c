@@ -7,6 +7,11 @@
 
 static void Error_(struct ArgpxResult *res)
 {
+    if (res == NULL) {
+        printf("result is NULL\n");
+        exit(EXIT_FAILURE);
+    }
+
     printf("Error, parser status: %d\n", res->status);
     printf("%s\n", ArgpxStatusToString(res->status));
     printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->current_argv_ptr);
@@ -105,11 +110,7 @@ int main(int argc, char *argv[])
         .group_idx = 0,
         .name = "paramlist",
         .action_type = kArgpxActionParamList,
-        .action_load.param_list =
-            {
-                .count = &test_param_list_count,
-                .params = &test_param_list,
-            },
+        .action_load.param_list = {.count = &test_param_list_count, .params = &test_param_list},
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
         .group_idx = 3,
@@ -149,9 +150,8 @@ int main(int argc, char *argv[])
 
     // clang-format on
 
-    // TODO temp test
     if (res == NULL)
-        Error_(res);
+        Error_(NULL);
     if (res->status != kArgpxStatusSuccess)
         Error_(res);
 
