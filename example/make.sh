@@ -14,6 +14,7 @@ cflag=(
     "-I../include/"
     "-O0"
     "-g"
+    "-Wvla"
 )
 
 # https://unix.stackexchange.com/a/193660

@@ -100,14 +100,14 @@ void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup
 {
     style->group_c += 1;
 
-    style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroupItem[style->group_c]));
+    style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroupItem) * style->group_c);
     style->group_v[style->group_c - 1] = *new;
 }
 
 void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbolItem new[static 1])
 {
     style->symbol_c += 1;
-    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbolItem[style->symbol_c]));
+    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbolItem) * style->symbol_c);
     style->symbol_v[style->symbol_c - 1] = *new;
 }
 
@@ -115,7 +115,7 @@ void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagIt
 {
     set->count += 1;
 
-    set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlagItem[set->count]));
+    set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlagItem) * set->count);
     set->ptr[set->count - 1] = *new;
 }
 
@@ -149,7 +149,7 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
     struct ArgpxResult *res = data->res;
 
     res->param_count += 1;
-    res->paramv = realloc(res->paramv, sizeof(char * [res->param_count])); // TODO error check
+    res->paramv = realloc(res->paramv, sizeof(char *) * res->param_count); // TODO error check
     res->paramv[res->param_count - 1] = str;
 
     if (data->terminate.method == kArgpxTerminateAtNumberOfCommandParam) {
@@ -332,7 +332,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
     *outcome->count = last_idx + 1;
 
     char **list;
-    size_t list_size = sizeof(char * [last_idx + 1]);
+    size_t list_size = sizeof(char *) * last_idx + 1;
 
     if (last_idx == 0) {
         list = malloc(list_size);
@@ -340,7 +340,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
         list = realloc(*outcome->params, list_size);
     }
 
-    char *new_str = malloc(sizeof(char[str_len + 1]));
+    char *new_str = malloc(sizeof(char) * str_len + 1);
     memcpy(new_str, str, str_len);
     new_str[str_len] = '\0';
 
