@@ -18,7 +18,7 @@ struct UnifiedData_ {
     // arguments count
     int arg_c;
     // pointer to arguments array
-    char **args;
+    char **arg_v;
     // the arg index being processed, it records the first unprocessed arg.
     // no no no, try to make it to record the last processed arg
     int arg_idx;
@@ -133,7 +133,7 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
     }
     data->arg_idx += offset;
 
-    return data->args[data->arg_idx];
+    return data->arg_v[data->arg_idx];
 }
 
 /*
@@ -148,12 +148,12 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
 {
     struct ArgpxResult *res = data->res;
 
-    res->param_count += 1;
-    res->paramv = realloc(res->paramv, sizeof(char *) * res->param_count); // TODO error check
-    res->paramv[res->param_count - 1] = str;
+    res->param_c += 1;
+    res->param_v = realloc(res->param_v, sizeof(char *) * res->param_c); // TODO error check
+    res->param_v[res->param_c - 1] = str;
 
     if (data->terminate.method == kArgpxTerminateAtNumberOfCommandParam) {
-        if (res->param_count >= data->terminate.load.num_of_cmd_param.limit)
+        if (res->param_c >= data->terminate.load.num_of_cmd_param.limit)
             return 1;
     }
 
@@ -250,7 +250,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
 static int ActionParamSingle_(
     struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf[static 1], char *param_start, int param_len)
 {
-    struct ArgpxOutParamSingle *unit_ptr = &conf->action_load.param_single;
+    struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
 
     if (param_start == NULL)
         param_start = ShiftArguments_(data, 1);
@@ -265,7 +265,7 @@ static int ActionParamSingle_(
         return -1;
     }
 
-    StringToType_(param_start, param_len, unit_ptr->type, unit_ptr->ptr);
+    StringToType_(param_start, param_len, unit->type, unit->value);
 
     return 0;
 }
@@ -283,7 +283,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     char *param_now;
     int remaining;
     for (int unit_idx = 0; unit_idx < conf->action_load.param_multi.count; unit_idx++) {
-        struct ArgpxOutParamSingle *unit = &conf->action_load.param_multi.units[unit_idx];
+        struct ArgpxOutParamSingle *unit = &conf->action_load.param_multi.unit_v[unit_idx];
 
         if (unit_idx == 0) {
             param_now = param_base != NULL ? param_base : ShiftArguments_(data, 1);
@@ -305,7 +305,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
             param_len = delimiter_ptr - param_now;
         }
 
-        StringToType_(param_now, param_len, unit->type, unit->ptr);
+        StringToType_(param_now, param_len, unit->type, unit->value);
 
         int used_len = param_len + grp->delimiter_len;
         param_now += used_len;
@@ -329,7 +329,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
  */
 static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last_idx, char *str, int str_len)
 {
-    *outcome->count = last_idx + 1;
+    *outcome->count_ptr = last_idx + 1;
 
     char **list;
     size_t list_size = sizeof(char *) * last_idx + 1;
@@ -337,7 +337,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
     if (last_idx == 0) {
         list = malloc(list_size);
     } else {
-        list = realloc(*outcome->params, list_size);
+        list = realloc(*outcome->list_ptr, list_size);
     }
 
     char *new_str = malloc(sizeof(char) * str_len + 1);
@@ -346,7 +346,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
 
     list[last_idx] = new_str;
 
-    *outcome->params = list;
+    *outcome->list_ptr = list;
 
     return 0;
 }
@@ -749,7 +749,7 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
     struct UnifiedData_ data = {
         .res = malloc(sizeof(struct ArgpxResult)),
         .arg_c = func->argc,
-        .args = func->argv,
+        .arg_v = func->argv,
         .arg_idx = 0,
         .style = *func->style,
         .conf = *func->flag,
@@ -764,9 +764,9 @@ struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
         // update index record
         data.res->current_argv_idx = data.arg_idx;
-        data.res->current_argv_ptr = data.args[data.arg_idx];
+        data.res->current_argv_ptr = data.arg_v[data.arg_idx];
 
-        char *arg = data.args[data.arg_idx];
+        char *arg = data.arg_v[data.arg_idx];
         int symbol_idx = MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
         if (symbol_idx >= 0) {
             struct ArgpxSymbolItem *sym = &data.style.symbol_v[symbol_idx];

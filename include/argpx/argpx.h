@@ -100,18 +100,18 @@ enum ArgpxVarType {
 struct ArgpxOutParamSingle {
     enum ArgpxVarType type;
     // a pointer to the actual variable
-    void *ptr;
+    void *value;
 };
 
 struct ArgpxOutParamMulti {
     int count;
-    // format units array
-    struct ArgpxOutParamSingle *units;
+    // parameter format units array
+    struct ArgpxOutParamSingle *unit_v;
 };
 
 struct ArgpxOutParamList {
-    int *count;
-    char ***params; // pointer to a pointer list to a string list...
+    int *count_ptr;
+    char ***list_ptr; // pointer to a pointer list to a string list...
 };
 
 struct ArgpxOutSetMemory {
@@ -169,9 +169,9 @@ struct ArgpxResult {
     // pretty much the same as current_argv_idx, but it's directly useable string
     char *current_argv_ptr;
     // parameter here is non-flag command "argument"
-    int param_count;
+    int param_c;
     // an array of command parameters
-    char **paramv;
+    char **param_v;
 };
 
 // TODO aaa... it's works

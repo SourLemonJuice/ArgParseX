@@ -69,11 +69,20 @@ This seems tedious, but the interfaces are still being adjusted.
 
 At here(Simplified Chinese): [docs/](./docs/)
 
+All the functions do not use static variables, so they're thread safe.\
+However, the config data structures can't be modified at the same times.
+
 ## C standard
 
 Compatibility whit C99 is the main thing.\
 But i think it might be possible to implement a new interface for C23 with macro switch.\
 There has `auto` and `typeof()`... that could make things easier.
+
+Uses some `malloc()`, otherwise? Why not use heap memory?\
+And `-Wvla`(no Variable-length array).
+
+Code style follows [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html), and clang-format config.\
+The "namespace" of identifiers is `argpx_xxx`.The base pointer of the array is named `xxx_v`, its counter named `xxx_c`.
 
 ## Todo
 
