@@ -19,6 +19,7 @@ enum ArgpxStatus {
     kArgpxStatusAssignmentDisallowArg,
     kArgpxStatusParamDeficiency,
     kArgpxStatusParamBizarreFormat,
+    kArgpxStatusNotFlag, // use for step by step interface
 };
 
 enum ArgpxActionType {
@@ -47,7 +48,7 @@ enum ArgpxActionType {
 #define ARGPX_ATTR_COMPOSABLE 0b1 << 3
 #define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 4
 
-struct ArgpxGroupItem {
+struct ArgpxGroup {
     // all group attribute
     uint16_t attribute;
     // prefix of flag, like the "--" of "--flag". it's a string
@@ -69,7 +70,7 @@ enum ArgpxSymbolType {
     kArgpxSymbolCallback,
 };
 
-struct ArgpxSymbolItem {
+struct ArgpxSymbol {
     // key symbol array
     char *str;
     // key symbol type array
@@ -80,11 +81,11 @@ struct ArgpxSymbolItem {
 
 struct ArgpxStyle {
     int group_c;
-    struct ArgpxGroupItem *group_v;
+    struct ArgpxGroup *group_v;
     // key symbol count
     // for example, StopParsing symbol may like "--" or "-"
     int symbol_c;
-    struct ArgpxSymbolItem *symbol_v;
+    struct ArgpxSymbol *symbol_v;
 };
 
 enum ArgpxVarType {
@@ -131,7 +132,7 @@ struct ArgpxOutSetInt {
 };
 
 // in library source code it is called "conf/config"
-struct ArgpxFlagItem {
+struct ArgpxFlag {
     // It's an index not an id
     // emm... I trust the programer can figure out the array index in their hands
     // then there is no need for a new hash table here
@@ -159,19 +160,7 @@ struct ArgpxFlagItem {
 
 struct ArgpxFlagSet {
     int count;
-    struct ArgpxFlagItem *ptr;
-};
-
-struct ArgpxResult {
-    enum ArgpxStatus status;
-    // index to the last parsed argument, processing maybe finished or maybe wrong
-    int current_argv_idx;
-    // pretty much the same as current_argv_idx, but it's directly useable string
-    char *current_argv_ptr;
-    // parameter here is non-flag command "argument"
-    int param_c;
-    // an array of command parameters
-    char **param_v;
+    struct ArgpxFlag *ptr;
 };
 
 // TODO aaa... it's works
@@ -191,11 +180,30 @@ struct ArgpxTerminateMethod {
     } load;
 };
 
+struct ArgpxResult {
+    enum ArgpxStatus status;
+    // index to the last parsed argument, processing maybe finished or maybe wrong
+    int current_argv_idx;
+    // pretty much the same as current_argv_idx, but it's directly useable string
+    char *current_argv_ptr;
+    // parameter here is non-flag command "argument"
+    int param_c;
+    // an array of command parameters
+    char **param_v;
+};
+
 char *ArgpxStatusToString(enum ArgpxStatus status);
-void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroupItem new[static 1]);
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbolItem new[static 1]);
-void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
-struct ArgpxResult *ArgpxMain(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
+
+void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroup new[static 1]);
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbol new[static 1]);
+void ArgpxFreeStyle(struct ArgpxStyle style[static 1]);
+
+void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
+void ArgpxFreeFlag(struct ArgpxFlagSet set[static 1]);
+
+void ArgpxFreeResult(struct ArgpxResult res[static 1]);
+
+struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
     struct ArgpxTerminateMethod *terminate);
 
 /*
@@ -210,14 +218,14 @@ enum ArgpxHidden_BuiltinGroup {
     kArgpxHidden_BuiltinGroupCount,
 };
 
-#define ARGPX_GROUP_GNU &(const struct ArgpxGroupItem){ \
+#define ARGPX_GROUP_GNU &(const struct ArgpxGroup){ \
         .prefix = "--", \
         .assigner = "=", \
         .delimiter = ",", \
         .attribute = 0, \
     }
 
-#define ARGPX_GROUP_UNIX &(const struct ArgpxGroupItem){ \
+#define ARGPX_GROUP_UNIX &(const struct ArgpxGroup){ \
         .prefix = "-", \
         .assigner = "=", \
         .delimiter = ",", \
@@ -225,7 +233,7 @@ enum ArgpxHidden_BuiltinGroup {
     }
 
 #define ARGPX_SYMBOL_STOP_PARSING(str_in) \
-    &(struct ArgpxSymbolItem){ \
+    &(struct ArgpxSymbol){ \
         .str = str_in, \
         .type = kArgpxSymbolStopParsing, \
     }

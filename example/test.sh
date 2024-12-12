@@ -36,7 +36,7 @@ function AssertSuccess {
 
     command -- $@
     if [[ $? -ne 0 ]]; then
-        echo "> Assert failed, expected Success(0) -- $@"
+        echo "[Failure] Assert failed, expected Success(0) -- $@"
         exit 1
     fi
 }
@@ -46,7 +46,7 @@ function AssertFailure {
 
     command -- $@
     if [[ $? -eq 0 ]]; then
-        echo "> Assert failed, expected Failure(1) -- $@"
+        echo "[Failure] Assert failed, expected Failure(1) -- $@"
         exit 1
     fi
 }
@@ -63,4 +63,4 @@ AssertSuccess $test_exec -baac -a -- -ba paramEnd
 AssertSuccess $test_exec /win1Param1/win2Param2 paramEnd
 
 separator - 3
-echo "All test passed(only the return code is detected)"
+echo "[Success] All test passed(only the return code is detected)"

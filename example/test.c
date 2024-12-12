@@ -49,13 +49,13 @@ int main(int argc, char *argv[])
     ArgpxAppendGroup(&style, ARGPX_GROUP_GNU);
     // https://stackoverflow.com/a/11152199/25416550
     // other element will be initialized implicitly
-    ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
+    ArgpxAppendGroup(&style, &(struct ArgpxGroup){
         .prefix = "++",
         .assigner = "~",
         .delimiter = "-",
     });
     ArgpxAppendGroup(&style, ARGPX_GROUP_UNIX);
-    ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
+    ArgpxAppendGroup(&style, &(struct ArgpxGroup){
         .prefix = "/",
         .assigner = "=",
         .delimiter = ",",
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     ArgpxAppendSymbol(&style, ARGPX_SYMBOL_STOP_PARSING("-"));
 
     struct ArgpxFlagSet flag = {0};
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "test",
         .action_type = kArgpxActionParamMulti,
@@ -77,25 +77,25 @@ int main(int argc, char *argv[])
                 {.type = kArgpxVarString, .var_ptr = &test_str2},
             },
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "setbool",
         .action_type = kArgpxActionSetBool,
         .action_load.set_bool = {.source = true, .target_ptr = &test_bool},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "setint",
         .action_type = kArgpxActionSetInt,
         .action_load.set_int = {.source = 123, .target_ptr = &test_int},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "setint",
         .action_type = kArgpxActionSetInt,
         .action_load.set_int = {.source = 123, .target_ptr = &test_int},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 1,
         .name = "test2",
         .action_type = kArgpxActionParamMulti,
@@ -106,38 +106,38 @@ int main(int argc, char *argv[])
                 {.type = kArgpxVarString, .var_ptr = &test_str22},
             },
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "paramlist",
         .action_type = kArgpxActionParamList,
         .action_load.param_list = {.count_ptr = &test_param_list_count, .list_ptr = &test_param_list},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
         .name = "win1",
         .action_type = kArgpxActionParamSingle,
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_win_str1},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
         .name = "win2",
         .action_type = kArgpxActionParamSingle,
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_win_str2},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 2,
         .name = "a",
         .action_type = kArgpxActionSetBool,
         .action_load.set_bool = {.source = true, .target_ptr = &test_bool2},
     });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 2,
         .name = "b",
         .action_type = kArgpxActionParamSingle,
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_str31},
     });
 
-    struct ArgpxResult *res = ArgpxMain(argc, argv, &style, &flag, NULL);
+    struct ArgpxResult *res = ArgpxParse(argc, argv, &style, &flag, NULL);
 
     // clang-format on
 
@@ -160,6 +160,8 @@ int main(int argc, char *argv[])
     printf("==== command parameters ====\n");
     for (int i = 0; i < res->param_c; i++)
         printf("%s\n", res->param_v[i]);
+
+    ArgpxFreeResult(res);
 
     return 0;
 }

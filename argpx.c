@@ -29,7 +29,7 @@ struct UnifiedData_ {
 
 struct UnifiedGroupCache_ {
     int idx;
-    struct ArgpxGroupItem item;
+    struct ArgpxGroup item;
     int prefix_len;
     int assigner_len;
     bool assigner_toggle;
@@ -94,31 +94,48 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     case kArgpxStatusParamBizarreFormat:
         return "Bizarre format occurs within the range of parameter string";
     default:
-        return "[ArgParseX - ArgpxStatusToString(): not added]";
+        return "[ArgParseX - ArgpxStatusToString(): not recorded]";
     }
 }
 
-void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroupItem new[static 1])
+void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
 {
     style->group_c += 1;
 
-    style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroupItem) * style->group_c);
+    style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroup) * style->group_c);
     style->group_v[style->group_c - 1] = *new;
 }
 
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbolItem new[static 1])
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbol new[static 1])
 {
     style->symbol_c += 1;
-    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbolItem) * style->symbol_c);
+    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbol) * style->symbol_c);
     style->symbol_v[style->symbol_c - 1] = *new;
 }
 
-void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1])
+void ArgpxFreeStyle(struct ArgpxStyle style[static 1])
+{
+    free(style->group_v);
+    free(style->symbol_v);
+}
+
+void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
 {
     set->count += 1;
 
-    set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlagItem) * set->count);
+    set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlag) * set->count);
     set->ptr[set->count - 1] = *new;
+}
+
+void ArgpxFreeFlag(struct ArgpxFlagSet set[static 1])
+{
+    free(set->ptr);
+}
+
+void ArgpxFreeResult(struct ArgpxResult res[static 1])
+{
+    free(res->param_v);
+    free(res);
 }
 
 /*
@@ -250,7 +267,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
     return negative: error and set status
  */
 static int ActionParamSingle_(
-    struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf[static 1], char *param_start, int param_len)
+    struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], char *param_start, int param_len)
 {
     struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
 
@@ -280,7 +297,7 @@ static int ActionParamSingle_(
     return negative: error and set status
  */
 static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlagItem conf[static 1], char *param_base, int range)
+    struct ArgpxFlag conf[static 1], char *param_base, int range)
 {
     char *param_now;
     int remaining;
@@ -359,7 +376,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
     return negative: error and set status
  */
 static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlagItem conf_ptr[static 1], char *param_start_ptr, int max_param_len)
+    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len)
 {
     char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
     if (param_now == NULL)
@@ -398,7 +415,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
 /*
     kArgpxActionSetMemory
  */
-static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
+static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     struct ArgpxOutSetMemory *ptr = &conf_ptr->action_load.set_memory;
     memcpy(ptr->target_ptr, ptr->source_ptr, ptr->size);
@@ -407,7 +424,7 @@ static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFla
 /*
     kArgpxActionSetBool
  */
-static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
+static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     struct ArgpxOutSetBool *ptr = &conf_ptr->action_load.set_bool;
     *ptr->target_ptr = ptr->source;
@@ -416,7 +433,7 @@ static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlagI
 /*
     kArgpxActionSetInt
  */
-static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlagItem conf_ptr[static 1])
+static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     struct ArgpxOutSetInt *ptr = &conf_ptr->action_load.set_int;
     *ptr->target_ptr = ptr->source;
@@ -431,7 +448,7 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlagIt
  */
 static int MatchingGroup_(struct UnifiedData_ data[static 1], char arg[static 1])
 {
-    struct ArgpxGroupItem grp;
+    struct ArgpxGroup grp;
     int no_prefix_group_idx = -1;
     for (int g_idx = 0; g_idx < data->style.group_c; g_idx++) {
         grp = data->style.group_v[g_idx];
@@ -452,8 +469,8 @@ static int MatchingGroup_(struct UnifiedData_ data[static 1], char arg[static 1]
 /*
     Should the assigner of this flag config is mandatory?
  */
-static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], struct ArgpxGroupItem group_ptr[static 1],
-    struct ArgpxFlagItem conf_ptr[static 1])
+static bool ShouldFlagTypeHaveParam_(
+    struct UnifiedData_ data[static 1], struct ArgpxGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
 {
     switch (conf_ptr->action_type) {
     case kArgpxActionSetMemory:
@@ -487,16 +504,16 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], struct 
 
     return NULL: error and set status
  */
-static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
+static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], int max_name_len, bool shortest)
 {
     bool tail_limit = max_name_len <= 0 ? false : true;
     // we may need to find the longest match
-    struct ArgpxFlagItem *final_conf_ptr = NULL;
+    struct ArgpxFlag *final_conf_ptr = NULL;
     int final_name_len = 0;
 
     for (int conf_idx = 0; conf_idx < data->conf.count; conf_idx++) {
-        struct ArgpxFlagItem *conf_ptr = &data->conf.ptr[conf_idx];
+        struct ArgpxFlag *conf_ptr = &data->conf.ptr[conf_idx];
         if (conf_ptr->group_idx != grp->idx)
             continue;
 
@@ -536,7 +553,7 @@ static struct ArgpxFlagItem *MatchingConf_(struct UnifiedData_ data[static 1], s
     Return matched symbol item index of sym_v.
     Return negative num is not match.
  */
-static int MatchingSymbol_(char *target, int sym_c, struct ArgpxSymbolItem *sym_v)
+static int MatchingSymbol_(char *target, int sym_c, struct ArgpxSymbol *sym_v)
 {
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
@@ -569,7 +586,7 @@ static int ParseArgumentIndependent_(
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlagItem *conf = MatchingConf_(data, grp, name_start, name_len, false);
+    struct ArgpxFlag *conf = MatchingConf_(data, grp, name_start, name_len, false);
     // some check
     if (conf == NULL)
         return -1;
@@ -633,7 +650,7 @@ static int ParseArgumentComposable_(
     int remaining_len = strlen(arg) - grp->prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlagItem *conf = MatchingConf_(data, grp, base_ptr, 0, true);
+        struct ArgpxFlag *conf = MatchingConf_(data, grp, base_ptr, 0, true);
         if (conf == NULL)
             return -1;
         int name_len = strlen(conf->name);
@@ -746,7 +763,7 @@ static int ParseArgumentComposable_(
 
     return NULL: result structure can't allocated.
  */
-struct ArgpxResult *ArgpxMain(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
+struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
     struct ArgpxTerminateMethod *terminate)
 {
     struct UnifiedData_ data = {
@@ -772,7 +789,7 @@ struct ArgpxResult *ArgpxMain(int arg_c, char **arg_v, struct ArgpxStyle *style,
         char *arg = data.arg_v[data.arg_idx];
         int symbol_idx = MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
         if (symbol_idx >= 0) {
-            struct ArgpxSymbolItem *sym = &data.style.symbol_v[symbol_idx];
+            struct ArgpxSymbol *sym = &data.style.symbol_v[symbol_idx];
             switch (sym->type) {
             case kArgpxSymbolStopParsing:
                 stop_parsing = true;
