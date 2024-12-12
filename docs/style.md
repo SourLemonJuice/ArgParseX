@@ -1,14 +1,12 @@
-# 标志组/Flag group
+# 风格/Style
 
-> 需要大幅更新
+`ArgpxStyle` 结构体中的 Group/标志组 是所有标志的最上层的抽象，它类似于不同的命令行风格的配置文件
 
-标志组是所有标志的最上层的抽象，它类似于不同的命令行风格的配置文件
+它定义了每个标志的前缀、赋值符号、分隔符以及一些特殊属性。\
+设想中，配合属性组应该能描述出大多常见的甚至近乎所有的命令行参数风格和行为
 
-它定义了每个标志的前缀、赋值符号、分隔符以及一些特殊属性（大小为 `uint16_t attribute`）。\
-设想中，配合属性组应该能描述出大多常见的甚至近乎所有的命令行参数风格和行为。\
-当然目前不是如此，它还需要实现很多的属性才能做到这一点
-
-每一个标志认领组的过程只是检测了前缀是否匹配，如果匹配到了一个组那么接下来所有的解析行为都会受到该组中配置的约束
+每一个标志认领组的过程只是检测了前缀（`.prefix`）是否匹配，如果匹配到了一个组那么接下来所有的解析行为都会受到该组中配置的约束。\
+当然前缀为空也是有效的，它会在其他组没能匹配时作为最后备的选项使用
 
 组不会定义获取参数后的 action，这是每个标志自己的事
 
@@ -16,11 +14,11 @@
 
 文档是个放细节的地方，明显的事情还是懒得写了（咕咕咕）
 
-参见 [example/test.c](../example/test.c) 中关于 `struct ArgpxFlagGroup` 的部分
+参见 [example/test.c](../example/test.c) 中关于 `ArgpxAppendGroup()` 函数的部分
 
 ## 赋值方式/Assignment
 
-宏前缀：`ARGPX_ATTR_ASSIGNMENT`
+宏前缀：`ARGPX_ATTR_ASSIGNMENT_*`
 
 默认情况下会启用所有的复制方式，并用组属性的方式分别禁用：
 
@@ -32,7 +30,7 @@
 
 ## 参数分割方式/Parameter partition
 
-宏前缀：`ARGPX_ATTR_PARAM`
+宏前缀：`ARGPX_ATTR_PARAM_*`
 
 同样的，默认会启用所有方式，并使用组属性分别禁用：
 
@@ -42,7 +40,7 @@
 |禁止使用 arg 分割|`ARGPX_ATTR_PARAM_DISABLE_ARG`|`--test=param1 param2`|`kArgpxStatusParamDisallowArg`|
 
 之前所说的所有赋值方式都会尊重分割方式的配置\
-（特指尾随字符串）（这是可以被允许的： `--test=param1 param2`）
+（特指尾随字符串模式）（这是可以被允许的： `--test=param1 param2`）
 
 ## 可组合化/Composable
 
@@ -80,16 +78,4 @@ ArgParseX 打算提供一些常见的组配置作为默认选项，不过如果�
 |GNU|`ARGPX_GROUP_GNU`|`--test=param1,param2`|
 |Unix|`ARGPX_GROUP_UNIX`|`-A -B=str1,str2 -ABstr1,str2`|
 
-它们都会被扩展为一个 `struct ArgpxFlagGroup` 结构体（不是指针），这是我所想的使用方法：
-
-```c
-struct ArgpxFlagGroup group[] = {
-    ARGPX_GROUP_GNU,
-    {
-        .attribute = 0,
-        .prefix = "else",
-        .assigner = NULL,
-        .delimiter = NULL,
-    },
-};
-```
+它们都会被扩展为一个指向 `struct ArgpxGroup` 结构体的指针（复合字面量，栈上分配）

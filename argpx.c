@@ -106,7 +106,7 @@ void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup
     style->group_v[style->group_c - 1] = *new;
 }
 
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbol new[static 1])
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
 {
     style->symbol_c += 1;
     style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbol) * style->symbol_c);
@@ -784,6 +784,8 @@ static int ParseArgumentComposable_(
 
 /*
     The result struct ArgpxResult needs to be freed up manually.
+
+    If the terminate param is NULL, that's same as {.method = kArgpxTerminateNone} of struct ArgpxTerminateMethod.
 
     return NULL: result structure can't allocated.
  */

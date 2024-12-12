@@ -13,8 +13,8 @@ The goal of ArgParseX is not to be simple use, which also make the interface loo
 In short, the user need create a `struct ArgpxStyle` and append it with `ArgpxAppendGroup()` and `struct ArgpxGroupItem`.
 
 ```c
-struct ArgpxStyle style = {0};
-ArgpxAppendGroup(&style, &(struct ArgpxGroupItem){
+struct ArgpxStyle style = {0}; // zero initialization is required
+ArgpxAppendGroup(&style, &(struct ArgpxGroup){
     .prefix = "--",
     .assigner = "=",
     .delimiter = ",",
@@ -37,8 +37,8 @@ ArgpxAppendSymbol(&style, ARGPX_SYMBOL_STOP_PARSING("-"));
 Finally, the most important thing to define the content of flags:
 
 ```c
-struct ArgpxFlagSet flag = {0};
-ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
+struct ArgpxFlagSet flag = {0}; // zero initialization is required
+ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
     .group_idx = 0, // the first flag group that was be added(here is GNU)
     .name = "setbool",
     .action_type = kArgpxActionSetBool,
@@ -51,19 +51,8 @@ It means, if `--setbool` detected, `test_bool` will be set to `true`.
 After the configuration, call the main parser:
 
 ```c
-struct ArgpxResult *res = ArgpxMain(&(struct ArgpxMainOption){
-    // skip first arg
-    .argc = argc - 1,
-    .argv = argv + 1,
-    .style = &style,
-    .flag = &flag,
-    .terminate.method = kArgpxTerminateNone,
-    // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
-    // .terminate.load.num_of_cmd_param.limit = 2,
-});
+struct ArgpxResult *res = ArgpxParse(argc, argv, &style, &flag, NULL);
 ```
-
-This seems tedious, but the interfaces are still being adjusted.
 
 ## Documents
 

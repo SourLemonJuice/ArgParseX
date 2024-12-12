@@ -197,7 +197,7 @@ struct ArgpxResult {
 char *ArgpxStatusToString(enum ArgpxStatus status);
 
 void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroup new[static 1]);
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbol new[static 1]);
+void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
 void ArgpxFreeStyle(struct ArgpxStyle style[static 1]);
 
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
@@ -220,14 +220,14 @@ enum ArgpxHidden_BuiltinGroup {
     kArgpxHidden_BuiltinGroupCount,
 };
 
-#define ARGPX_GROUP_GNU &(const struct ArgpxGroup){ \
+#define ARGPX_GROUP_GNU &(struct ArgpxGroup){ \
         .prefix = "--", \
         .assigner = "=", \
         .delimiter = ",", \
         .attribute = 0, \
     }
 
-#define ARGPX_GROUP_UNIX &(const struct ArgpxGroup){ \
+#define ARGPX_GROUP_UNIX &(struct ArgpxGroup){ \
         .prefix = "-", \
         .assigner = "=", \
         .delimiter = ",", \
