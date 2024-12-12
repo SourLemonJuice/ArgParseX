@@ -2,7 +2,6 @@
 
 #include <inttypes.h>
 #include <iso646.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -829,7 +828,7 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
         }
 
         struct UnifiedGroupCache_ grp = {0};
-        grp.idx = MatchingGroup_(data.arg_c, data.arg_v, arg);
+        grp.idx = MatchingGroup_(data.style.group_c, data.style.group_v, arg);
 
         if (grp.idx < 0 or stop_parsing == true) {
             int append_ret = AppendCommandParameter_(&data, arg);
