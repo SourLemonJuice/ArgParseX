@@ -72,8 +72,8 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     case kArgpxStatusSuccess:
         return "Processing success";
     case kArgpxStatusFailure:
-        return "Generic unknown error, I must be lazy~~~";
-    case kArgpxStatusGroupConfigInvalid:
+        return "Generic unknown error and memory issue";
+    case kArgpxStatusConfigInvalid:
         return "There is an invalid group config, perhaps empty string";
     case kArgpxStatusUnknownFlag:
         return "Unknown flag name but the group matched(by prefix)";
@@ -91,8 +91,8 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
         return "Detected assignment mode is Arg(argument), but for some reason, unavailable";
     case kArgpxStatusParamDeficiency:
         return "Flag gets insufficient parameters";
-    case kArgpxStatusParamBizarreFormat:
-        return "Bizarre format occurs within the range of parameter string";
+    case kArgpxStatusBizarreFormat:
+        return "Bizarre format occurs within the range of flag parameter string";
     default:
         return "[ArgParseX - ArgpxStatusToString(): not recorded]";
     }
@@ -333,7 +333,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     // normally, "remaining" is negative. I didn't think to reuse it
 
     if (remaining >= 0) {
-        data->res->status = kArgpxStatusParamBizarreFormat;
+        data->res->status = kArgpxStatusBizarreFormat;
         return -1;
     }
     return 0;
@@ -394,7 +394,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
             param_len = delimiter_ptr - param_now;
             // delimiter shouldn't exist at the last parameter's tail
             if (param_len + grp->delimiter_len >= remaining_len) {
-                data->res->status = kArgpxStatusParamBizarreFormat;
+                data->res->status = kArgpxStatusBizarreFormat;
                 return -1;
             }
         }
@@ -446,12 +446,12 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag c
       >= 0: valid index of data.groups[]
       < 0: it's a command parameter, not flag
  */
-static int MatchingGroup_(struct UnifiedData_ data[static 1], char arg[static 1])
+static int MatchingGroup_(int group_c, struct ArgpxGroup group_v[static 1], char arg[static 1])
 {
     struct ArgpxGroup grp;
     int no_prefix_group_idx = -1;
-    for (int g_idx = 0; g_idx < data->style.group_c; g_idx++) {
-        grp = data->style.group_v[g_idx];
+    for (int g_idx = 0; g_idx < group_c; g_idx++) {
+        grp = group_v[g_idx];
 
         if (grp.prefix[0] == '\0')
             no_prefix_group_idx = g_idx;
@@ -464,6 +464,30 @@ static int MatchingGroup_(struct UnifiedData_ data[static 1], char arg[static 1]
         return no_prefix_group_idx;
 
     return -1;
+}
+
+/*
+    return negative: error
+ */
+static int GroupCacheInit_(struct UnifiedGroupCache_ grp[static 1])
+{
+    grp->prefix_len = strlen(grp->item.prefix);
+
+    // empty string checks
+    grp->assigner_toggle = grp->item.assigner != NULL;
+    grp->assigner_len = grp->assigner_toggle == true ? strlen(grp->item.assigner) : 0;
+
+    // don't need update argpx_errno here
+    if (grp->assigner_toggle == true and grp->assigner_len == 0)
+        return -1;
+
+    grp->delimiter_toggle = grp->item.delimiter != NULL;
+    grp->delimiter_len = grp->delimiter_toggle == true ? strlen(grp->item.delimiter) : 0;
+
+    if (grp->delimiter_toggle == true and grp->delimiter_len == 0)
+        return -1;
+
+    return 0;
 }
 
 /*
@@ -803,35 +827,22 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
         }
 
         struct UnifiedGroupCache_ grp = {0};
-        grp.idx = MatchingGroup_(&data, arg); // TODO error throw
+        grp.idx = MatchingGroup_(data.arg_c, data.arg_v, arg);
 
         if (grp.idx < 0 or stop_parsing == true) {
-            if (AppendCommandParameter_(&data, arg) > 0) // TODO error throw
+            int append_ret = AppendCommandParameter_(&data, arg);
+            if (append_ret < 0) {
+                data.res->status = kArgpxStatusFailure;
                 return data.res;
-            else
-                continue;
+            } else if (append_ret > 0) {
+                return data.res;
+            }
+            continue;
         }
         grp.item = data.style.group_v[grp.idx];
 
-        grp.prefix_len = strlen(grp.item.prefix);
-
-        // TODO update those check
-
-        // empty string checks
-        grp.assigner_toggle = grp.item.assigner != NULL;
-        grp.assigner_len = grp.assigner_toggle == true ? strlen(grp.item.assigner) : 0;
-
-        // don't need update argpx_errno here
-        if (grp.assigner_toggle == true and grp.assigner_len == 0) {
-            data.res->status = kArgpxStatusGroupConfigInvalid;
-            return data.res;
-        }
-
-        grp.delimiter_toggle = grp.item.delimiter != NULL;
-        grp.delimiter_len = grp.delimiter_toggle == true ? strlen(grp.item.delimiter) : 0;
-
-        if (grp.delimiter_toggle == true and grp.delimiter_len == 0) {
-            data.res->status = kArgpxStatusGroupConfigInvalid;
+        if (GroupCacheInit_(&grp) < 0) {
+            data.res->status = kArgpxStatusConfigInvalid;
             return data.res;
         }
 

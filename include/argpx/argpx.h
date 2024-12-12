@@ -9,17 +9,19 @@
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
-    kArgpxStatusGroupConfigInvalid,
+
+    kArgpxStatusConfigInvalid,
     kArgpxStatusUnknownFlag,
     kArgpxStatusActionUnavailable,
     kArgpxStatusArgumentsDeficiency,
+
     kArgpxStatusParamNoNeeded,
+    kArgpxStatusParamDeficiency,
+
     kArgpxStatusAssignmentDisallowAssigner,
     kArgpxStatusAssignmentDisallowTrailing,
     kArgpxStatusAssignmentDisallowArg,
-    kArgpxStatusParamDeficiency,
-    kArgpxStatusParamBizarreFormat,
-    kArgpxStatusNotFlag, // use for step by step interface
+    kArgpxStatusBizarreFormat,
 };
 
 enum ArgpxActionType {
