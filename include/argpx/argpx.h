@@ -191,22 +191,12 @@ struct ArgpxTerminateMethod {
     } load;
 };
 
-/*
-    The function parameter of ArgpxMain()
- */
-struct ArgpxMainOption {
-    int argc;
-    char **argv;
-    struct ArgpxStyle *style;
-    struct ArgpxFlagSet *flag;
-    struct ArgpxTerminateMethod terminate;
-};
-
 char *ArgpxStatusToString(enum ArgpxStatus status);
 void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroupItem new[static 1]);
 void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], struct ArgpxSymbolItem new[static 1]);
 void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlagItem new[static 1]);
-struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func);
+struct ArgpxResult *ArgpxMain(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
+    struct ArgpxTerminateMethod *terminate);
 
 /*
     Shortcuts

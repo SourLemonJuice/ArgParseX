@@ -37,6 +37,8 @@ struct UnifiedGroupCache_ {
     int delimiter_toggle;
 };
 
+static const struct ArgpxTerminateMethod kTerminateStructDefault = {.method = kArgpxTerminateNone};
+
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack
  */
@@ -744,16 +746,17 @@ static int ParseArgumentComposable_(
 
     return NULL: result structure can't allocated.
  */
-struct ArgpxResult *ArgpxMain(struct ArgpxMainOption *func)
+struct ArgpxResult *ArgpxMain(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
+    struct ArgpxTerminateMethod *terminate)
 {
     struct UnifiedData_ data = {
         .res = malloc(sizeof(struct ArgpxResult)),
-        .arg_c = func->argc,
-        .arg_v = func->argv,
+        .arg_c = arg_c,
+        .arg_v = arg_v,
         .arg_idx = 0,
-        .style = *func->style,
-        .conf = *func->flag,
-        .terminate = func->terminate,
+        .style = *style,
+        .conf = *flag,
+        .terminate = terminate == NULL ? kTerminateStructDefault : *terminate,
     };
 
     if (data.res == NULL)

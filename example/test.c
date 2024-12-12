@@ -137,16 +137,7 @@ int main(int argc, char *argv[])
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_str31},
     });
 
-    struct ArgpxResult *res = ArgpxMain(&(struct ArgpxMainOption){
-        // skip first arg
-        .argc = argc - 1,
-        .argv = argv + 1,
-        .style = &style,
-        .flag = &flag,
-        .terminate.method = kArgpxTerminateNone,
-        // .terminate.method = kArgpxTerminateAtNumberOfCommandParam,
-        // .terminate.load.num_of_cmd_param.limit = 2,
-    });
+    struct ArgpxResult *res = ArgpxMain(argc, argv, &style, &flag, NULL);
 
     // clang-format on
 
