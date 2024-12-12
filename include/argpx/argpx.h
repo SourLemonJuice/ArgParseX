@@ -100,7 +100,7 @@ enum ArgpxVarType {
 struct ArgpxOutParamSingle {
     enum ArgpxVarType type;
     // a pointer to the actual variable
-    void *value;
+    void *var_ptr;
 };
 
 struct ArgpxOutParamMulti {

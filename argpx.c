@@ -265,7 +265,7 @@ static int ActionParamSingle_(
         return -1;
     }
 
-    StringToType_(param_start, param_len, unit->type, unit->value);
+    StringToType_(param_start, param_len, unit->type, unit->var_ptr);
 
     return 0;
 }
@@ -305,7 +305,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
             param_len = delimiter_ptr - param_now;
         }
 
-        StringToType_(param_now, param_len, unit->type, unit->value);
+        StringToType_(param_now, param_len, unit->type, unit->var_ptr);
 
         int used_len = param_len + grp->delimiter_len;
         param_now += used_len;

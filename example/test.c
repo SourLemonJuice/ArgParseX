@@ -71,10 +71,10 @@ int main(int argc, char *argv[])
         .name = "test",
         .action_type = kArgpxActionParamMulti,
         .action_load.param_multi.count = 2,
-        .action_load.param_multi.units =
+        .action_load.param_multi.unit_v =
             (struct ArgpxOutParamSingle[]){
-                {.type = kArgpxVarString, .ptr = &test_str1},
-                {.type = kArgpxVarString, .ptr = &test_str2},
+                {.type = kArgpxVarString, .var_ptr = &test_str1},
+                {.type = kArgpxVarString, .var_ptr = &test_str2},
             },
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
@@ -100,29 +100,29 @@ int main(int argc, char *argv[])
         .name = "test2",
         .action_type = kArgpxActionParamMulti,
         .action_load.param_multi.count = 2,
-        .action_load.param_multi.units =
+        .action_load.param_multi.unit_v =
             (struct ArgpxOutParamSingle[]){
-                {.type = kArgpxVarString, .ptr = &test_str21},
-                {.type = kArgpxVarString, .ptr = &test_str22},
+                {.type = kArgpxVarString, .var_ptr = &test_str21},
+                {.type = kArgpxVarString, .var_ptr = &test_str22},
             },
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
         .group_idx = 0,
         .name = "paramlist",
         .action_type = kArgpxActionParamList,
-        .action_load.param_list = {.count = &test_param_list_count, .params = &test_param_list},
+        .action_load.param_list = {.count_ptr = &test_param_list_count, .list_ptr = &test_param_list},
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
         .group_idx = 3,
         .name = "win1",
         .action_type = kArgpxActionParamSingle,
-        .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str1},
+        .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_win_str1},
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
         .group_idx = 3,
         .name = "win2",
         .action_type = kArgpxActionParamSingle,
-        .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_win_str2},
+        .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_win_str2},
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlagItem){
         .group_idx = 2,
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
         .group_idx = 2,
         .name = "b",
         .action_type = kArgpxActionParamSingle,
-        .action_load.param_single = {.type = kArgpxVarString, .ptr = &test_str31},
+        .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_str31},
     });
 
     struct ArgpxResult *res = ArgpxMain(&(struct ArgpxMainOption){
@@ -167,8 +167,8 @@ int main(int argc, char *argv[])
         printf("paramlist index: %d: %s\n", i, test_param_list[i]);
 
     printf("==== command parameters ====\n");
-    for (int i = 0; i < res->param_count; i++)
-        printf("%s\n", res->paramv[i]);
+    for (int i = 0; i < res->param_c; i++)
+        printf("%s\n", res->param_v[i]);
 
     return 0;
 }
