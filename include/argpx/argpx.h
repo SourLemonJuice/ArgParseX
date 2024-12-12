@@ -196,7 +196,7 @@ struct ArgpxResult {
 
 char *ArgpxStatusToString(enum ArgpxStatus status);
 
-void ArgpxAppendGroup(struct ArgpxStyle set[static 1], const struct ArgpxGroup new[static 1]);
+int ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1]);
 void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
 void ArgpxFreeStyle(struct ArgpxStyle style[static 1]);
 

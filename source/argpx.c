@@ -97,12 +97,19 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     }
 }
 
-void ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
+/*
+    For debug and more right to know, function will return the new group's index number.
+    It can be used in .group_idx of struct ArgpxFlag.
+ */
+int ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
 {
     style->group_c += 1;
 
+    int new_idx = style->group_c - 1;
     style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroup) * style->group_c);
-    style->group_v[style->group_c - 1] = *new;
+    style->group_v[new_idx] = *new;
+
+    return new_idx;
 }
 
 void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
