@@ -6,4 +6,4 @@
 
 ## 识别状态码的含义
 
-`.status` 看起来不易理解，不过 `ArgpxStatusToString()` 可以将其转换成该枚举所对应的英文解释，一个 `strerror()` 的仿制品啦
+`.status` 看起来不易理解，不过 `ArgpxStatusString()` 可以将其转换成该枚举所对应的英文解释，一个 `strerror()` 的仿制品啦

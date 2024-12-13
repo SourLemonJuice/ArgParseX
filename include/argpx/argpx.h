@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// details are in ArgpxStatusToString()
+// details are in ArgpxStatusString()
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
@@ -194,7 +194,7 @@ struct ArgpxResult {
     char **param_v;
 };
 
-char *ArgpxStatusToString(enum ArgpxStatus status);
+char *ArgpxStatusString(enum ArgpxStatus status);
 
 int ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1]);
 void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);

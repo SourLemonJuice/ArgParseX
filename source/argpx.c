@@ -36,8 +36,6 @@ struct UnifiedGroupCache_ {
     int delimiter_toggle;
 };
 
-static const struct ArgpxTerminateMethod kTerminateStructDefault = {.method = kArgpxTerminateNone};
-
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack
  */
@@ -61,21 +59,19 @@ static char *strnstr_(char haystack[const restrict static 1], char needle[const 
 }
 
 /*
-    Convert structure ArgpxResult's ArgpxStatus enum to string
-
-    // TODO change name
+    Convert structure ArgpxResult's ArgpxStatus enum to string.
  */
-char *ArgpxStatusToString(enum ArgpxStatus status)
+char *ArgpxStatusString(enum ArgpxStatus status)
 {
     switch (status) {
     case kArgpxStatusSuccess:
         return "Processing success";
     case kArgpxStatusFailure:
-        return "Generic unknown error and memory issue";
+        return "Generic unknown error or memory issue";
     case kArgpxStatusConfigInvalid:
         return "There is an invalid group config, perhaps empty string";
     case kArgpxStatusUnknownFlag:
-        return "Unknown flag name but the group matched(by prefix)";
+        return "Unknown flag name but the group prefix matched";
     case kArgpxStatusActionUnavailable:
         return "Flag action type unavailable. Not implemented or configuration conflict";
     case kArgpxStatusArgumentsDeficiency:
@@ -83,17 +79,17 @@ char *ArgpxStatusToString(enum ArgpxStatus status)
     case kArgpxStatusParamNoNeeded:
         return "This flag don't need parameter, but the input seems to be assigning a value";
     case kArgpxStatusAssignmentDisallowAssigner:
-        return "Detected assignment mode is Assigner, but for some reason, unavailable";
+        return "Detected assignment mode is Assigner, but unavailable";
     case kArgpxStatusAssignmentDisallowTrailing:
-        return "Detected assignment mode is Trailing, but for some reason, unavailable";
+        return "Detected assignment mode is Trailing, but unavailable";
     case kArgpxStatusAssignmentDisallowArg:
-        return "Detected assignment mode is Arg(argument), but for some reason, unavailable";
+        return "Detected assignment mode is Arg(argument), but unavailable";
     case kArgpxStatusParamDeficiency:
         return "Flag gets insufficient parameters";
     case kArgpxStatusBizarreFormat:
-        return "Bizarre format occurs within the range of flag parameter string";
+        return "Bizarre format occurs";
     default:
-        return "[ArgParseX - ArgpxStatusToString(): not recorded]";
+        return "[ArgParseX - ArgpxStatusString(): not recorded]";
     }
 }
 
@@ -803,18 +799,22 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
     struct ArgpxTerminateMethod *terminate)
 {
     struct UnifiedData_ data = {
-        .res = malloc(sizeof(struct ArgpxResult)),
         .arg_c = arg_c,
         .arg_v = arg_v,
         .arg_idx = 0,
         .style = *style,
         .conf = *flag,
-        .terminate = terminate == NULL ? kTerminateStructDefault : *terminate,
     };
 
+    data.res = malloc(sizeof(struct ArgpxResult));
     if (data.res == NULL)
         return NULL;
     data.res->status = kArgpxStatusSuccess;
+
+    if (terminate == NULL)
+        data.terminate = (struct ArgpxTerminateMethod){.method = kArgpxTerminateNone};
+    else
+        data.terminate = *terminate;
 
     bool stop_parsing = false;
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
