@@ -1,8 +1,5 @@
 # ArgParseX
 
-> [!WARNING]
-> Still under development.
-
 Comprehensive and configurable command line arguments parser library.\
 Written for C language.
 
@@ -51,7 +48,8 @@ It means, if `--setbool` detected, `test_bool` will be set to `true`.
 After the configuration, call the main parser:
 
 ```c
-struct ArgpxResult *res = ArgpxParse(argc, argv, &style, &flag, NULL);
+// skip the first arg, that's the exec command name
+struct ArgpxResult *res = ArgpxParse(argc - 1, argv + 1, &style, &flag, NULL);
 ```
 
 ## Documents

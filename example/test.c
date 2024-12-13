@@ -137,7 +137,8 @@ int main(int argc, char *argv[])
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_str31},
     });
 
-    struct ArgpxResult *res = ArgpxParse(argc, argv, &style, &flag, NULL);
+    // skip the first arg, that's the exec command name
+    struct ArgpxResult *res = ArgpxParse(argc - 1, argv + 1, &style, &flag, NULL);
 
     // clang-format on
 
