@@ -350,7 +350,6 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     The last_idx acts as both the counter(index + 1) and new item index
 
     return negative: error
-    TODO error check
  */
 static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last_idx, char *str, int str_len)
 {
@@ -365,7 +364,13 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
         list = realloc(*outcome->list_ptr, list_size);
     }
 
+    if (list == NULL)
+        return -1;
+
     char *new_str = malloc(sizeof(char) * str_len + 1);
+    if (new_str == NULL)
+        return -1;
+
     memcpy(new_str, str, str_len);
     new_str[str_len] = '\0';
 
@@ -405,8 +410,10 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
             }
         }
 
-        if (AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0)
+        if (AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
+            data->res->status = kArgpxStatusFailure;
             return -1;
+        }
 
         int used_len = param_len + grp->delimiter_len;
         // each parameter will have a delimiter, expect the last one
