@@ -177,8 +177,8 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
     }
     res->param_v[res->param_c - 1] = str;
 
-    if (data->terminate.method == kArgpxTerminateAtNumberOfCommandParam) {
-        if (res->param_c >= data->terminate.load.num_of_cmd_param.limit)
+    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
+        if (res->param_c >= data->terminate.load.cmdparam_limit.limit)
             return -2;
     }
 

@@ -165,20 +165,19 @@ struct ArgpxFlagSet {
     struct ArgpxFlag *ptr;
 };
 
-// TODO aaa... it's works
 enum ArgpxHidden_TerminateMethod {
     kArgpxTerminateNone,
-    kArgpxTerminateAtNumberOfCommandParam,
+    kArgpxTerminateCmdparamLimit,
 };
 
-struct ArgpxHidden_TerminateAtNumberOfCommandParam {
+struct ArgpxHidden_TerminateCmdparamLimit {
     int limit;
 };
 
 struct ArgpxTerminateMethod {
     enum ArgpxHidden_TerminateMethod method;
     union {
-        struct ArgpxHidden_TerminateAtNumberOfCommandParam num_of_cmd_param;
+        struct ArgpxHidden_TerminateCmdparamLimit cmdparam_limit;
     } load;
 };
 
