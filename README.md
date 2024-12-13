@@ -7,7 +7,7 @@ Written for C language.
 
 The goal of ArgParseX is not to be simple use, which also make the interface look less nice. Some actual usage at here: [example/test.c](example/test.c)
 
-In short, the user need create a `struct ArgpxStyle` and append it with `ArgpxAppendGroup()` and `struct ArgpxGroupItem`.
+In short, the user need create a `struct ArgpxStyle` and append it with `ArgpxAppendGroup()` and `struct ArgpxGroup`.
 
 ```c
 struct ArgpxStyle style = {0}; // zero initialization is required
