@@ -8,7 +8,7 @@
 #include <string.h>
 
 /*
-    An unified data of this library
+    An unified data of this library.
  */
 struct UnifiedData_ {
     // the result structure of the main function
@@ -37,7 +37,7 @@ struct UnifiedGroupCache_ {
 };
 
 /*
-    Search "needle" in "haystack", limited to the first "len" chars of haystack
+    Search "needle" in "haystack", limited to the first "len" chars of haystack.
  */
 static char *strnstr_(char haystack[const restrict static 1], char needle[const restrict static 1], int len)
 {
@@ -142,7 +142,7 @@ void ArgpxFreeResult(struct ArgpxResult res[static 1])
 
 /*
     Using the offset shift arguments, it will be safe.
-    Return a pointer to the new argument
+    Return a pointer to the new argument.
 
     return NULL: error and set status
  */
@@ -158,7 +158,7 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 }
 
 /*
-    Copy the current argument to result data structure as a command parameter
+    Copy the current argument to result data structure as a command parameter.
 
     return:
         0: ok
@@ -222,7 +222,7 @@ static int StringIsBool_(char *string, int length)
 
 /*
     Converting a string to a specific type.
-    And assign it to a pointer
+    And assign it to a pointer.
 
     The "max_len" is similar to strncmp()'s "n"
  */
@@ -296,9 +296,9 @@ static int ActionParamSingle_(
 }
 
 /*
-    If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter
+    If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter.
 
-    If range <= 0 then no limit
+    If range <= 0 then no limit.
 
     return negative: error and set status
  */
@@ -347,7 +347,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
 
 /*
     Append a new item into a ParamList action. It can only be attached to the tail.
-    The last_idx acts as both the counter(index + 1) and new item index
+    The last_idx acts as both the counter(index + 1) and new item index.
 
     return negative: error
  */
@@ -382,7 +382,17 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
 }
 
 /*
-    If max_param_len <= 0 then no limit
+    Clean up the struct ArgpxOutParamList.
+ */
+void ArgpxFreeFlagParamList(int count, char **list)
+{
+    for (int i = 0; i < count; i++)
+        free(list[i]);
+    free(list);
+}
+
+/*
+    If max_param_len <= 0 then no limit.
 
     return negative: error and set status
  */
@@ -535,9 +545,9 @@ static bool ShouldFlagTypeHaveParam_(
 
     And flag may have assignment symbol, I think the caller should already known the names range.
     In this case, it make sense to get a max_name_len.
-    Set max_name_len to <= 0 to disable it
+    Set max_name_len to <= 0 to disable it.
 
-    If "shortest" is true, then shortest matching flag name and ignore tail
+    If "shortest" is true, then shortest matching flag name and ignore tail.
 
     return NULL: error and set status
  */

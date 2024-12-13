@@ -30,6 +30,7 @@ enum ArgpxActionType {
     // get multiple flag parameters with different data type
     kArgpxActionParamMulti,
     // get flag parameters raw string array, the array size is dynamic
+    // the caller need to manually free up them with ArgpxFreeFlagParamList()!!!
     kArgpxActionParamList,
     // if need some custom structure or the other data type
     kArgpxActionSetMemory,
@@ -203,6 +204,7 @@ void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag n
 void ArgpxFreeFlag(struct ArgpxFlagSet set[static 1]);
 
 void ArgpxFreeResult(struct ArgpxResult res[static 1]);
+void ArgpxFreeFlagParamList(int count, char **list);
 
 struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
     struct ArgpxTerminateMethod *terminate);

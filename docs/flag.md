@@ -66,6 +66,9 @@
 
 在这个例子中，如果输入为 `--test=a,b,c` 则 `(char **)param_list` 会被赋值为储存了三个字符串的的列表的指针，而 `(int)param_list_count` 会被设定为该列表的大小（也就是3）
 
+注意：\
+调用者需要在事后调用 `ArgpxFreeFlagParamList()` 释放列表所吃掉的内存
+
 ### kArgpxActionSet* 系列
 
 这一部分动作是为了不需要参数的标志创建的，比如：`--setbool`。\
