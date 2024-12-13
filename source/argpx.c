@@ -166,20 +166,24 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
 
     return:
         0: ok
-        1(> 0): need terminate processing as required by MainOption
-        < 0: error
+        -1: error, status is set
+        -2: need terminate processing as required by MainOption
  */
 static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str)
 {
     struct ArgpxResult *res = data->res;
 
     res->param_c += 1;
-    res->param_v = realloc(res->param_v, sizeof(char *) * res->param_c); // TODO error check
+    res->param_v = realloc(res->param_v, sizeof(char *) * res->param_c);
+    if (res->param_v == NULL) {
+        res->status = kArgpxStatusFailure;
+        return -1;
+    }
     res->param_v[res->param_c - 1] = str;
 
     if (data->terminate.method == kArgpxTerminateAtNumberOfCommandParam) {
         if (res->param_c >= data->terminate.load.num_of_cmd_param.limit)
-            return 1;
+            return -2;
     }
 
     return 0;
@@ -819,6 +823,13 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
         data.res->current_argv_ptr = data.arg_v[data.arg_idx];
 
         char *arg = data.arg_v[data.arg_idx];
+
+        if (stop_parsing == true) {
+            if (AppendCommandParameter_(&data, arg) < 0)
+                return data.res;
+            continue;
+        }
+
         int symbol_idx = MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
         if (symbol_idx >= 0) {
             struct ArgpxSymbol *sym = &data.style.symbol_v[symbol_idx];
@@ -837,14 +848,9 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
         struct UnifiedGroupCache_ grp = {0};
         grp.idx = MatchingGroup_(data.style.group_c, data.style.group_v, arg);
 
-        if (grp.idx < 0 or stop_parsing == true) {
-            int append_ret = AppendCommandParameter_(&data, arg);
-            if (append_ret < 0) {
-                data.res->status = kArgpxStatusFailure;
+        if (grp.idx < 0) {
+            if (AppendCommandParameter_(&data, arg) < 0)
                 return data.res;
-            } else if (append_ret > 0) {
-                return data.res;
-            }
             continue;
         }
         grp.item = data.style.group_v[grp.idx];
