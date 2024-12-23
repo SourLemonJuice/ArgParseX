@@ -826,7 +826,11 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
     data.res = malloc(sizeof(struct ArgpxResult));
     if (data.res == NULL)
         return NULL;
-    data.res->status = kArgpxStatusSuccess;
+    *data.res = (struct ArgpxResult){
+        .status = kArgpxStatusSuccess,
+        .param_c = 0,
+        .param_v = NULL,
+    };
 
     if (terminate == NULL)
         data.terminate = (struct ArgpxTerminateMethod){.method = kArgpxTerminateNone};
