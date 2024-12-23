@@ -25,6 +25,9 @@ enum ArgpxStatus {
 };
 
 enum ArgpxActionType {
+    // only run callback, no any outcome
+    // for safety, it's 0(default after zero init)
+    kArgpxActionCallbackOnly = 0,
     // get a single flag parameter, but can still convert it's data type
     kArgpxActionParamSingle,
     // get multiple flag parameters with different data type
@@ -39,8 +42,6 @@ enum ArgpxActionType {
     // like SetBool, maybe enum need it
     // note: this action just uses the "int" type
     kArgpxActionSetInt,
-    // only run callback, no any outcome
-    kArgpxActionCallbackOnly,
 };
 
 #define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
@@ -157,6 +158,7 @@ struct ArgpxFlag {
         void *callback_only;
     } action_load;
 
+    // if NULL, skip callback
     void (*callback)(void *action_load, void *param);
     void *callback_param;
 };

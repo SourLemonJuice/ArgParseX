@@ -248,7 +248,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
     switch (type) {
     case kArgpxVarString:
         *(char **)ptr = value_str;
-        return;
+        return; // dont't free up
     case kArgpxVarInt:
         *(int *)ptr = strtoimax(value_str, NULL, 0);
         break;

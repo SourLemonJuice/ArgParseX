@@ -3,7 +3,16 @@
 Comprehensive and configurable command line arguments parser library.\
 Written for C language.
 
-## Usage flow
+## Documents
+
+At here(Simplified Chinese): [docs/](./docs/)
+
+All the functions do not use static variables, so they're thread-safe.\
+However, the config data structures can't be modified at the same times.
+
+Note the documents are always up-to-date, so make sure to check the corresponding git tag.
+
+## Usage
 
 The goal of ArgParseX is not to be simple use, which also make the interface look less nice. Some actual usage at here: [example/test.c](example/test.c)
 
@@ -51,13 +60,6 @@ After the configuration, call the main parser:
 // skip the first arg, that's the exec command name
 struct ArgpxResult *res = ArgpxParse(argc - 1, argv + 1, &style, &flag, NULL);
 ```
-
-## Documents
-
-At here(Simplified Chinese): [docs/](./docs/)
-
-All the functions do not use static variables, so they're thread safe.\
-However, the config data structures can't be modified at the same times.
 
 ## C standard
 
