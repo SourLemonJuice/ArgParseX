@@ -169,12 +169,19 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
 {
     struct ArgpxResult *res = data->res;
 
-    res->param_c += 1;
-    res->param_v = realloc(res->param_v, sizeof(char *) * res->param_c);
+    if (res->param_c == 0) {
+        res->param_c = 1;
+        res->param_v = malloc(sizeof(char *) * 3);
+    } else {
+        res->param_c += 1;
+        if (res->param_c % 4 == 0)
+            res->param_v = realloc(res->param_v, sizeof(char *) * (res->param_c + 3));
+    }
     if (res->param_v == NULL) {
         res->status = kArgpxStatusFailure;
         return -1;
     }
+
     res->param_v[res->param_c - 1] = str;
 
     if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
@@ -355,15 +362,14 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
 {
     *outcome->count_ptr = last_idx + 1;
 
-    char **list;
-    size_t list_size = sizeof(char *) * last_idx + 1;
+    char **list = *outcome->list_ptr;
 
     if (last_idx == 0) {
-        list = malloc(list_size);
+        list = malloc(sizeof(char *) * 3);
     } else {
-        list = realloc(*outcome->list_ptr, list_size);
+        if ((last_idx + 1) % 4 == 0)
+            list = realloc(*outcome->list_ptr, sizeof(char *) * (last_idx + 1 + 3));
     }
-
     if (list == NULL)
         return -1;
 
