@@ -29,23 +29,27 @@ struct UnifiedData_ {
 struct UnifiedGroupCache_ {
     int idx;
     struct ArgpxGroup item;
-    int prefix_len;
-    int assigner_len;
+    size_t prefix_len;
+    size_t assigner_len;
     bool assigner_toggle;
-    int delimiter_len;
-    int delimiter_toggle;
+    size_t delimiter_len;
+    bool delimiter_toggle;
 };
 
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack.
  */
-static char *strnstr_(char haystack[const restrict static 1], char needle[const restrict static 1], int len)
+static char *strnstr_(const char *haystack, const char *needle, size_t len)
 {
+    // return memmem(haystack, len, needle, strlen(needle));
+    // from GNU libc
+    // this won't make benchmark faster, the haystack is too short.
+
     if (len <= 0)
         return NULL;
 
     char *temp_str;
-    int needle_len = strlen(needle);
+    size_t needle_len = strlen(needle);
     while (true) {
         temp_str = strchr(haystack, needle[0]);
         if (temp_str == NULL)
@@ -61,7 +65,7 @@ static char *strnstr_(char haystack[const restrict static 1], char needle[const 
 /*
     Convert structure ArgpxResult's ArgpxStatus enum to string.
  */
-char *ArgpxStatusString(enum ArgpxStatus status)
+char *ArgpxStatusString(const enum ArgpxStatus status)
 {
     switch (status) {
     case kArgpxStatusSuccess:
@@ -146,7 +150,7 @@ void ArgpxFreeResult(struct ArgpxResult res[static 1])
 
     return NULL: error and set status
  */
-static char *ShiftArguments_(struct UnifiedData_ data[static 1], int offset)
+static char *ShiftArguments_(struct UnifiedData_ data[static 1], const int offset)
 {
     if (data->arg_idx + offset >= data->arg_c) {
         data->res->status = kArgpxStatusArgumentsDeficiency;
@@ -198,7 +202,7 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
         0 == false
         1 == true
  */
-static int StringIsBool_(char *string, int length)
+static int StringIsBool_(const char *string, const size_t length)
 {
     if (length <= 0)
         return -1;
@@ -233,22 +237,19 @@ static int StringIsBool_(char *string, int length)
 
     The "max_len" is similar to strncmp()'s "n"
  */
-static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type, void *ptr)
+static void StringToType_(const char *source_str, const int max_len, const enum ArgpxVarType type, void *ptr)
 {
     // prepare a separate string
-    int str_len = strlen(source_str);
-    int actual_len;
-    size_t actual_size;
+    size_t str_size = strlen(source_str);
     // chose the smallest one
-    if (max_len < str_len)
-        actual_len = max_len;
-    else
-        actual_len = str_len;
-    actual_size = actual_len * sizeof(char) + 1;
+    if (max_len < str_size)
+        str_size = max_len;
+    str_size += 1;
+
     // allocate a new string
-    char *value_str = malloc(actual_size);
-    memcpy(value_str, source_str, actual_size);
-    value_str[actual_len] = '\0'; // actual_len is the last index of this string
+    char *value_str = malloc(str_size);
+    memcpy(value_str, source_str, str_size);
+    value_str[str_size - 1] = '\0'; // actual_len is the last index of this string
 
     // remember to change the first level pointer, but not just change secondary one
     // if can, the value_str needs to free up
@@ -282,7 +283,7 @@ static void StringToType_(char *source_str, int max_len, enum ArgpxVarType type,
 static int ActionParamSingle_(
     struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], char *param_start, int param_len)
 {
-    struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
+    const struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
 
     if (param_start == NULL)
         param_start = ShiftArguments_(data, 1);
@@ -310,10 +311,10 @@ static int ActionParamSingle_(
     return negative: error and set status
  */
 static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf[static 1], char *param_base, int range)
+    struct ArgpxFlag conf[static 1], char *param_base, size_t range)
 {
     char *param_now;
-    int remaining;
+    size_t remaining;
     for (int unit_idx = 0; unit_idx < conf->action_load.param_multi.count; unit_idx++) {
         struct ArgpxOutParamSingle *unit = &conf->action_load.param_multi.unit_v[unit_idx];
 
@@ -358,7 +359,8 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
 
     return negative: error
  */
-static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last_idx, char *str, int str_len)
+static int AppendParamList_(
+    const struct ArgpxOutParamList outcome[static 1], const int last_idx, const char *str, const size_t str_len)
 {
     *outcome->count_ptr = last_idx + 1;
 
@@ -390,7 +392,7 @@ static int AppendParamList_(struct ArgpxOutParamList outcome[static 1], int last
 /*
     Clean up the struct ArgpxOutParamList.
  */
-void ArgpxFreeFlagParamList(int count, char **list)
+void ArgpxFreeFlagParamList(const int count, char **list)
 {
     for (int i = 0; i < count; i++)
         free(list[i]);
@@ -403,9 +405,9 @@ void ArgpxFreeFlagParamList(int count, char **list)
     return negative: error and set status
  */
 static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, int max_param_len)
+    const struct ArgpxFlag conf_ptr[static 1], const char *param_start_ptr, const size_t max_param_len)
 {
-    char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
+    const char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
     if (param_now == NULL)
         return -1;
     int remaining_len = max_param_len > 0 ? max_param_len : strlen(param_now);
@@ -522,8 +524,7 @@ static int GroupCacheInit_(struct UnifiedGroupCache_ grp[static 1])
 /*
     Should the assigner of this flag config is mandatory?
  */
-static bool ShouldFlagTypeHaveParam_(
-    struct UnifiedData_ data[static 1], struct ArgpxGroup group_ptr[static 1], struct ArgpxFlag conf_ptr[static 1])
+static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], const struct ArgpxFlag conf_ptr[static 1])
 {
     switch (conf_ptr->action_type) {
     case kArgpxActionSetMemory:
@@ -543,7 +544,7 @@ static bool ShouldFlagTypeHaveParam_(
 /*
     Matching a name in all flag configs.
     It will find the conf with the highest match length in name_start.
-    But if search_first == true, it will find the first matching one:
+    But if shortest == true, it will find the first matching one:
 
     e.g. Find "TestTest" and "Test" in "TestTest"
     false: -> "TestTest"
@@ -558,23 +559,23 @@ static bool ShouldFlagTypeHaveParam_(
     return NULL: error and set status
  */
 static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    char name_start[static 1], int max_name_len, bool shortest)
+    const char name_start[static 1], const size_t max_name_len, const bool shortest)
 {
     bool tail_limit = max_name_len <= 0 ? false : true;
     // we may need to find the longest match
-    struct ArgpxFlag *final_conf_ptr = NULL;
-    int final_name_len = 0;
+    struct ArgpxFlag *longest_conf = NULL;
+    int longest_len = 0;
 
     for (int conf_idx = 0; conf_idx < data->conf.count; conf_idx++) {
-        struct ArgpxFlag *conf_ptr = &data->conf.ptr[conf_idx];
-        if (conf_ptr->group_idx != grp->idx)
+        struct ArgpxFlag *conf = &data->conf.ptr[conf_idx];
+        if (conf->group_idx != grp->idx)
             continue;
 
-        int conf_name_len = strlen(conf_ptr->name);
+        size_t conf_name_len = strlen(conf->name);
         if (tail_limit == true and conf_name_len > max_name_len)
             continue;
 
-        int match_len;
+        size_t match_len;
         if (shortest != true) {
             match_len = tail_limit == true ? max_name_len : strlen(name_start);
             if (match_len != conf_name_len)
@@ -584,29 +585,29 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
         }
 
         // matching name
-        if (strncmp(name_start, conf_ptr->name, match_len) != 0)
+        if (strncmp(name_start, conf->name, match_len) != 0)
             continue;
 
         // if matched, update max length record
-        if (final_name_len < conf_name_len) {
-            final_name_len = conf_name_len;
-            final_conf_ptr = conf_ptr;
+        if (longest_len < conf_name_len) {
+            longest_len = conf_name_len;
+            longest_conf = conf;
         }
 
         if (shortest == true)
             break;
     }
 
-    if (final_conf_ptr == NULL)
+    if (longest_conf == NULL)
         data->res->status = kArgpxStatusUnknownFlag;
-    return final_conf_ptr;
+    return longest_conf;
 }
 
 /*
     Return matched symbol item index of sym_v.
     Return negative num is not match.
  */
-static int MatchingSymbol_(char *target, int sym_c, struct ArgpxSymbol *sym_v)
+static int MatchingSymbol_(const char *target, const int sym_c, const struct ArgpxSymbol *sym_v)
 {
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
@@ -633,7 +634,7 @@ static int ParseArgumentIndependent_(
     else
         assigner_ptr = NULL;
 
-    int name_len;
+    size_t name_len;
     if (assigner_ptr != NULL)
         name_len = assigner_ptr - name_start;
     else
@@ -643,11 +644,11 @@ static int ParseArgumentIndependent_(
     // some check
     if (conf == NULL)
         return -1;
-    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, &grp->item, conf) == false) {
+    if (assigner_ptr != NULL and ShouldFlagTypeHaveParam_(data, conf) == false) {
         data->res->status = kArgpxStatusParamNoNeeded;
         return -1;
     }
-    if (ShouldFlagTypeHaveParam_(data, &grp->item, conf) == true) {
+    if (ShouldFlagTypeHaveParam_(data, conf) == true) {
         if (assigner_ptr != NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
             data->res->status = kArgpxStatusAssignmentDisallowAssigner;
             return -1;
@@ -700,13 +701,13 @@ static int ParseArgumentComposable_(
 {
     // believe that the prefix exists
     char *base_ptr = arg + grp->prefix_len;
-    int remaining_len = strlen(arg) - grp->prefix_len;
+    size_t remaining_len = strlen(arg) - grp->prefix_len;
 
     while (remaining_len > 0) {
         struct ArgpxFlag *conf = MatchingConf_(data, grp, base_ptr, 0, true);
         if (conf == NULL)
             return -1;
-        int name_len = strlen(conf->name);
+        size_t name_len = strlen(conf->name);
         remaining_len -= name_len;
 
         // some windows style...
@@ -717,7 +718,7 @@ static int ParseArgumentComposable_(
 
         // parameter stuff
         char *param_start = base_ptr + name_len;
-        bool conf_have_param = ShouldFlagTypeHaveParam_(data, &grp->item, conf);
+        bool conf_have_param = ShouldFlagTypeHaveParam_(data, conf);
 
         bool assigner_exist;
         // is the assigner exist?
@@ -740,7 +741,7 @@ static int ParseArgumentComposable_(
             remaining_len -= grp->assigner_len;
         }
 
-        int param_len = 0;
+        size_t param_len = 0;
         if (conf_have_param == true) {
             // get parameter length
             if (next_prefix == NULL)

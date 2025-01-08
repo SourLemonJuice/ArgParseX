@@ -1,7 +1,7 @@
 CC:=/usr/bin/clang
 CFLAGS+=-Wall -std=c99 -I../include/
-CFLAGS+=-O3
-CFLAGS+=-g
+CFLAGS+=-O3 -g
+# CFLAGS+=-Og
 
 argpx_src:=../source
 
