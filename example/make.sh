@@ -4,7 +4,7 @@
 CC="clang"
 
 src_code=(
-    "../source/argpx.c"
+    "../source/argpx*.c"
     "./test.c"
 )
 

@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "argpx_hash.h"
+
 /*
     An unified data of this library.
  */
