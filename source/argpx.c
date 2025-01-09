@@ -38,24 +38,25 @@ struct UnifiedGroupCache_ {
 
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack.
+
+    This used to be strnstr_().
  */
-static char *strnstr_(const char *haystack, const char *needle, size_t len)
+static char *memmem_(const char *haystack, const char *needle, size_t haystack_len, size_t needle_len)
 {
     // return memmem(haystack, len, needle, strlen(needle));
     // from GNU libc
     // this won't make benchmark faster, the haystack is too short.
 
-    if (len <= 0)
+    if (haystack_len == 0 or needle_len == 0 or needle_len > haystack_len)
         return NULL;
 
     char *temp_str;
-    size_t needle_len = strlen(needle);
     while (true) {
         temp_str = strchr(haystack, needle[0]);
         if (temp_str == NULL)
             return NULL;
 
-        if ((temp_str - haystack) + needle_len > len)
+        if ((temp_str - haystack) + needle_len > haystack_len)
             return NULL;
         if (strncmp(temp_str, needle, needle_len) == 0)
             return temp_str;
@@ -326,7 +327,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
         }
 
         size_t param_len;
-        char *delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining);
+        char *delimiter_ptr = memmem_(param_now, grp->item.delimiter, remaining, grp->delimiter_len);
         if (delimiter_ptr == NULL) {
             if (unit_idx == conf->action_load.param_multi.count - 1) {
                 param_len = remaining;
@@ -415,7 +416,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
 
     char *delimiter_ptr;
     for (int param_idx = 0; remaining_len > 0; param_idx++) {
-        delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining_len);
+        delimiter_ptr = memmem_(param_now, grp->item.delimiter, remaining_len, grp->delimiter_len);
 
         int param_len;
         if (delimiter_ptr == NULL) {
