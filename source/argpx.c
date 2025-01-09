@@ -325,7 +325,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
             remaining = range > 0 ? range : strlen(param_base);
         }
 
-        int param_len;
+        size_t param_len;
         char *delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining);
         if (delimiter_ptr == NULL) {
             if (unit_idx == conf->action_load.param_multi.count - 1) {
@@ -340,16 +340,17 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
 
         StringToType_(param_now, param_len, unit->type, unit->var_ptr);
 
-        int used_len = param_len + grp->delimiter_len;
-        param_now += used_len;
-        remaining -= used_len;
+        size_t seq_len = param_len + grp->delimiter_len;
+        param_now += seq_len;
+        // no --test=a,b,
+        // remaining always > 1 * seq or = seq - delimiter
+        if (remaining == seq_len) {
+            data->res->status = kArgpxStatusBizarreFormat;
+            return -1;
+        }
+        remaining -= seq_len;
     }
-    // normally, "remaining" is negative. I didn't think to reuse it
 
-    if (remaining >= 0) {
-        data->res->status = kArgpxStatusBizarreFormat;
-        return -1;
-    }
     return 0;
 }
 
