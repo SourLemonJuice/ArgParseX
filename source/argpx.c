@@ -9,6 +9,21 @@
 
 #include "argpx_hash.h"
 
+#define ARGPX_FLAG_TABLE_SIZE 32
+
+struct FlagTableUnit_ {
+    // only check if the root key is used
+    bool used;
+    struct ArgpxFlag conf;
+    // if not NULL, then it is a linked list
+    struct FlagTableUnit_ *next;
+};
+
+struct FlagTable_ {
+    int row_c;
+    struct FlagTableUnit_ **row_v;
+};
+
 /*
     An unified data of this library.
  */
@@ -25,6 +40,7 @@ struct UnifiedData_ {
     int arg_idx;
     struct ArgpxStyle style;
     struct ArgpxFlagSet conf;
+    struct FlagTable_ conf_table;
     struct ArgpxTerminateMethod terminate;
 };
 
@@ -47,7 +63,8 @@ static char *memmem_(const char *haystack, const char *needle, size_t haystack_l
 {
     // return memmem(haystack, len, needle, strlen(needle));
     // from GNU libc
-    // this won't make benchmark faster, the haystack is too short.
+    // when this function was formerly named strnstr_(), this won't make benchmark faster, the haystack is too short
+    // not even now
 
     if (haystack_len == 0 or needle_len == 0 or needle_len > haystack_len)
         return NULL;
@@ -145,6 +162,114 @@ void ArgpxFreeResult(struct ArgpxResult res[static 1])
 {
     free(res->param_v);
     free(res);
+}
+
+/*
+    Return the pointer of table self.
+    return NULL: error
+ */
+static struct FlagTable_ *AllocFlagTable_(struct FlagTable_ table[static 1], int row_c)
+{
+    table->row_c = row_c;
+    table->row_v = malloc(sizeof(struct FlagTableUnit_ *) * table->row_c);
+    for (int i = 0; i < table->row_c; i++) {
+        table->row_v[i] = malloc(sizeof(struct FlagTableUnit_) * ARGPX_FLAG_TABLE_SIZE);
+        if (table->row_v[i] == NULL) {
+            for (; i >= 0; i--)
+                free(table->row_v[i]);
+            return NULL;
+        }
+    }
+
+    return table;
+}
+
+/*
+    return NULL: error
+ */
+static struct FlagTableUnit_ *EnterFlagTableUnit_(struct FlagTableUnit_ unit[static 1])
+{
+    while (unit->used == true) {
+        if (unit->next == NULL) {
+            unit->next = malloc(sizeof(struct FlagTableUnit_));
+            if (unit->next == NULL)
+                return NULL;
+        }
+        unit = unit->next;
+    }
+
+    return unit;
+}
+
+/*
+    return NULL: error
+ */
+static struct FlagTable_ *MakeFlagTable_(struct ArgpxStyle style[static 1], struct ArgpxFlagSet set[static 1])
+{
+    struct FlagTable_ *table = malloc(sizeof(struct FlagTable_));
+    if (table == NULL)
+        return NULL;
+
+    table = AllocFlagTable_(table, style->group_c);
+    if (table == NULL) {
+        free(table);
+        return NULL;
+    }
+
+    for (int i = 0; i < table->row_c; i++) {
+        for (int j = 0; j < ARGPX_FLAG_TABLE_SIZE; j++) {
+            table->row_v[i][j] = (struct FlagTableUnit_){.used = false};
+        }
+    }
+
+    // init finished
+
+    for (int i = 0; i < set->count; i++) {
+        struct ArgpxFlag *conf = &set->ptr[i];
+
+        uint32_t name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
+        struct FlagTableUnit_ *unit = table->row_v[conf->group_idx];
+        unit += name_hash % ARGPX_FLAG_TABLE_SIZE;
+
+        unit = EnterFlagTableUnit_(unit);
+        if (unit == NULL) {
+            free(table->row_v);
+            free(table);
+            return NULL;
+        }
+
+        *unit = (struct FlagTableUnit_){.used = true, .conf = *conf, .next = NULL};
+    }
+
+    return table;
+}
+
+/*
+    Note: do not free up the parameter "unit", it is managed by row memory.
+    Note: this function won't check .used element of root unit.
+ */
+static void FreeRecursiveFlagTableUnit_(struct FlagTableUnit_ unit[static 1])
+{
+    if (unit->next == NULL)
+        return;
+
+    unit = unit->next;
+    do {
+        struct FlagTableUnit_ *ahead_unit = unit->next;
+        free(unit);
+        unit = ahead_unit;
+    } while (unit != NULL);
+
+    return;
+}
+
+static void FreeFlagTable_(struct FlagTable_ table[static 1])
+{
+    for (int row = 0; row < table->row_c; row++) {
+        for (int col = 0; col < ARGPX_FLAG_TABLE_SIZE; col++) {
+            FreeRecursiveFlagTableUnit_(&table->row_v[row][col]);
+        }
+    }
 }
 
 /*
