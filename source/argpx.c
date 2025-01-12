@@ -9,7 +9,8 @@
 
 #include "argpx_hash.h"
 
-#define ARGPX_FLAG_TABLE_SIZE 32
+#define ARGPX_FLAG_TABLE_SIZE 128
+#define ARGPX_DEV_HASH_坏👎
 
 struct FlagTableUnit_ {
     // only check if the root key is used
@@ -40,7 +41,7 @@ struct UnifiedData_ {
     int arg_idx;
     struct ArgpxStyle style;
     struct ArgpxFlagSet conf;
-    struct FlagTable_ conf_table;
+    struct FlagTable_ *conf_table;
     struct ArgpxTerminateMethod terminate;
 };
 
@@ -267,9 +268,14 @@ static void FreeFlagTable_(struct FlagTable_ table[static 1])
 {
     for (int row = 0; row < table->row_c; row++) {
         for (int col = 0; col < ARGPX_FLAG_TABLE_SIZE; col++) {
-            FreeRecursiveFlagTableUnit_(&table->row_v[row][col]);
+            struct FlagTableUnit_ *unit = &table->row_v[row][col];
+            if (unit->used == false)
+                continue;
+            FreeRecursiveFlagTableUnit_(unit);
         }
+        free(table->row_v[row]);
     }
+    free(table);
 }
 
 /*
@@ -687,8 +693,8 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], const s
 
     return NULL: error and set status
  */
-static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    const char name_start[static 1], const size_t max_name_len, const bool shortest)
+static struct ArgpxFlag *MatchConfLinear_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
+    char name_start[static 1], size_t max_name_len, bool shortest)
 {
     bool tail_limit = max_name_len <= 0 ? false : true;
     // we may need to find the longest match
@@ -733,10 +739,62 @@ static struct ArgpxFlag *MatchingConf_(struct UnifiedData_ data[static 1], struc
 }
 
 /*
+    return NULL: error and set status
+ */
+static struct ArgpxFlag *MatchConfHash_(
+    struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char name[static 1], size_t name_len)
+{
+    if (name_len == 0) {
+        data->res->status = kArgpxStatusFailure;
+        return NULL;
+    }
+
+    uint32_t name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
+    struct FlagTableUnit_ *unit = data->conf_table->row_v[grp->idx];
+    unit += name_hash % ARGPX_FLAG_TABLE_SIZE;
+
+    if (unit->used == false) {
+        data->res->status = kArgpxStatusUnknownFlag;
+        return NULL;
+    }
+
+    while (true) {
+        if (strncmp(unit->conf.name, name, name_len) == 0)
+            return &unit->conf;
+
+        if (unit->next == NULL) {
+            data->res->status = kArgpxStatusUnknownFlag;
+            return NULL;
+        }
+
+        unit = unit->next;
+    }
+}
+
+/*
+    A collection of MatchConf*() functions.
+
+    TODO don't be ugly
+ */
+static struct ArgpxFlag *MatchConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
+    char name_start[static 1], size_t max_name_len, bool shortest)
+{
+    #ifdef ARGPX_DEV_HASH_坏👎
+    return MatchConfLinear_(data, grp, name_start, max_name_len, shortest);
+    #endif
+
+    if (max_name_len == 0) {
+        return MatchConfLinear_(data, grp, name_start, 0, shortest);
+    } else {
+        return MatchConfHash_(data, grp, name_start, max_name_len);
+    }
+}
+
+/*
     Return matched symbol item index of sym_v.
     Return negative num is not match.
  */
-static int MatchingSymbol_(const char *target, const int sym_c, const struct ArgpxSymbol *sym_v)
+static int MatchSymbol_(const char *target, const int sym_c, const struct ArgpxSymbol *sym_v)
 {
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
@@ -769,7 +827,7 @@ static int ParseArgumentIndependent_(
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf = MatchingConf_(data, grp, name_start, name_len, false);
+    struct ArgpxFlag *conf = MatchConf_(data, grp, name_start, name_len, false);
     // some check
     if (conf == NULL)
         return -1;
@@ -833,7 +891,7 @@ static int ParseArgumentComposable_(
     size_t remaining_len = strlen(arg) - grp->prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlag *conf = MatchingConf_(data, grp, base_ptr, 0, true);
+        struct ArgpxFlag *conf = MatchConf_(data, grp, base_ptr, 0, true);
         if (conf == NULL)
             return -1;
         size_t name_len = strlen(conf->name);
@@ -973,6 +1031,14 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
     else
         data.terminate = *terminate;
 
+    #ifdef ARGPX_DEV_HASH_坏👎
+    data.conf_table = MakeFlagTable_(&data.style, &data.conf);
+    if (data.conf_table == NULL) {
+        data.res->status = kArgpxStatusMemoryError;
+        return data.res;
+    }
+    #endif
+
     bool stop_parsing = false;
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
         // update index record
@@ -983,11 +1049,11 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
 
         if (stop_parsing == true) {
             if (AppendCommandParameter_(&data, arg) < 0)
-                return data.res;
+                goto out;
             continue;
         }
 
-        int symbol_idx = MatchingSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
+        int symbol_idx = MatchSymbol_(arg, data.style.symbol_c, data.style.symbol_v);
         if (symbol_idx >= 0) {
             struct ArgpxSymbol *sym = &data.style.symbol_v[symbol_idx];
             switch (sym->type) {
@@ -995,7 +1061,7 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
                 stop_parsing = true;
                 continue;
             case kArgpxSymbolTerminateProcessing:
-                return data.res;
+                goto out;
             case kArgpxSymbolCallback:
                 sym->callback(sym->callback_param);
                 continue;
@@ -1007,14 +1073,14 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
 
         if (grp.idx < 0) {
             if (AppendCommandParameter_(&data, arg) < 0)
-                return data.res;
+                goto out;
             continue;
         }
         grp.item = data.style.group_v[grp.idx];
 
         if (GroupCacheInit_(&grp) < 0) {
             data.res->status = kArgpxStatusConfigInvalid;
-            return data.res;
+            goto out;
         }
 
         int ret;
@@ -1024,8 +1090,12 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
             ret = ParseArgumentIndependent_(&data, &grp, arg);
 
         if (ret < 0)
-            return data.res;
+            goto out;
     }
 
+    out:
+    #ifdef ARGPX_DEV_HASH_坏👎
+    FreeFlagTable_(data.conf_table);
+    # endif
     return data.res;
 }

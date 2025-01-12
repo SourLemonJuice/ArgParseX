@@ -9,6 +9,7 @@
 enum ArgpxStatus {
     kArgpxStatusSuccess = 0,
     kArgpxStatusFailure,
+    kArgpxStatusMemoryError,
 
     kArgpxStatusConfigInvalid,
     kArgpxStatusUnknownFlag,

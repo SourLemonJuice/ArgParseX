@@ -90,12 +90,6 @@ int main(int argc, char *argv[])
         .action_load.set_int = {.source = 123, .target_ptr = &test_int},
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
-        .group_idx = 0,
-        .name = "setint",
-        .action_type = kArgpxActionSetInt,
-        .action_load.set_int = {.source = 123, .target_ptr = &test_int},
-    });
-    ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 1,
         .name = "test2",
         .action_type = kArgpxActionParamMulti,
