@@ -9,8 +9,8 @@
 
 #include "argpx_hash.h"
 
-#define ARGPX_FLAG_TABLE_SIZE 128
-#define ARGPX_DEV_HASH_坏👎
+#define ARGPX_FLAG_TABLE_SIZE 48
+#define ARGPX_DEV_ENABLE_HASH
 
 struct FlagTableUnit_ {
     // only check if the root key is used
@@ -22,7 +22,7 @@ struct FlagTableUnit_ {
 
 struct FlagTable_ {
     int row_c;
-    struct FlagTableUnit_ **row_v;
+    struct FlagTableUnit_ *array;
 };
 
 /*
@@ -40,8 +40,10 @@ struct UnifiedData_ {
     // no no no, try to make it to record the last processed arg
     int arg_idx;
     struct ArgpxStyle style;
+    // config set
     struct ArgpxFlagSet conf;
-    struct FlagTable_ *conf_table;
+    // config table
+    struct FlagTable_ conf_table;
     struct ArgpxTerminateMethod terminate;
 };
 
@@ -57,30 +59,35 @@ struct UnifiedGroupCache_ {
 
 /*
     Search "needle" in "haystack", limited to the first "len" chars of haystack.
-
-    This used to be strnstr_().
  */
-static char *memmem_(const char *haystack, const char *needle, size_t haystack_len, size_t needle_len)
+static char *strnstr_(const void *haystack_in, const void *needle_in, size_t haystack_len)
 {
     // return memmem(haystack, len, needle, strlen(needle));
     // from GNU libc
-    // when this function was formerly named strnstr_(), this won't make benchmark faster, the haystack is too short
-    // not even now
+    // this won't make benchmark faster, the haystack is too short, not even now
 
-    if (haystack_len == 0 or needle_len == 0 or needle_len > haystack_len)
+    const char *haystack = haystack_in;
+    const char *needle = needle_in;
+
+    if (haystack == NULL or needle == NULL)
+        return NULL;
+    if (needle[0] == '\0')
+        return (char *)haystack;
+    if (haystack_len == 0)
         return NULL;
 
-    char *temp_str;
-    while (true) {
-        temp_str = strchr(haystack, needle[0]);
-        if (temp_str == NULL)
-            return NULL;
-
-        if ((temp_str - haystack) + needle_len > haystack_len)
-            return NULL;
-        if (strncmp(temp_str, needle, needle_len) == 0)
-            return temp_str;
+    for (size_t i = 0; i < haystack_len; i++) {
+        if (haystack[i] != needle[0])
+            continue;
+        for (size_t j = 0; i + j < haystack_len; j++) {
+            if (haystack[i + j] != needle[j])
+                break;
+            if (needle[j + 1] == '\0')
+                return (char *)&haystack[i];
+        }
     }
+
+    return NULL;
 }
 
 /*
@@ -165,22 +172,18 @@ void ArgpxFreeResult(struct ArgpxResult res[static 1])
     free(res);
 }
 
+#ifdef ARGPX_DEV_ENABLE_HASH
+
 /*
     Return the pointer of table self.
     return NULL: error
  */
-static struct FlagTable_ *AllocFlagTable_(struct FlagTable_ table[static 1], int row_c)
+static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ table[static 1], int row_c)
 {
     table->row_c = row_c;
-    table->row_v = malloc(sizeof(struct FlagTableUnit_ *) * table->row_c);
-    for (int i = 0; i < table->row_c; i++) {
-        table->row_v[i] = malloc(sizeof(struct FlagTableUnit_) * ARGPX_FLAG_TABLE_SIZE);
-        if (table->row_v[i] == NULL) {
-            for (; i >= 0; i--)
-                free(table->row_v[i]);
-            return NULL;
-        }
-    }
+    table->array = malloc(sizeof(struct FlagTableUnit_) * table->row_c * ARGPX_FLAG_TABLE_SIZE);
+    if (table->array == NULL)
+        return NULL;
 
     return table;
 }
@@ -188,7 +191,7 @@ static struct FlagTable_ *AllocFlagTable_(struct FlagTable_ table[static 1], int
 /*
     return NULL: error
  */
-static struct FlagTableUnit_ *EnterFlagTableUnit_(struct FlagTableUnit_ unit[static 1])
+static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ unit[static 1])
 {
     while (unit->used == true) {
         if (unit->next == NULL) {
@@ -203,24 +206,21 @@ static struct FlagTableUnit_ *EnterFlagTableUnit_(struct FlagTableUnit_ unit[sta
 }
 
 /*
+    Initialize the incoming table. That should be on the stack.
+
+    return the "table" parameter self.
     return NULL: error
  */
-static struct FlagTable_ *MakeFlagTable_(struct ArgpxStyle style[static 1], struct ArgpxFlagSet set[static 1])
+static struct FlagTable_ *FlagTableMake_(
+    struct ArgpxStyle style[static 1], struct ArgpxFlagSet set[static 1], struct FlagTable_ table[static 1])
 {
-    struct FlagTable_ *table = malloc(sizeof(struct FlagTable_));
-    if (table == NULL)
-        return NULL;
-
-    table = AllocFlagTable_(table, style->group_c);
+    table = FlagTableAlloc_(table, style->group_c);
     if (table == NULL) {
-        free(table);
         return NULL;
     }
 
-    for (int i = 0; i < table->row_c; i++) {
-        for (int j = 0; j < ARGPX_FLAG_TABLE_SIZE; j++) {
-            table->row_v[i][j] = (struct FlagTableUnit_){.used = false};
-        }
+    for (int i = 0; i < table->row_c * ARGPX_FLAG_TABLE_SIZE; i++) {
+        table->array[i] = (struct FlagTableUnit_){.used = false};
     }
 
     // init finished
@@ -229,13 +229,12 @@ static struct FlagTable_ *MakeFlagTable_(struct ArgpxStyle style[static 1], stru
         struct ArgpxFlag *conf = &set->ptr[i];
 
         uint32_t name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
-        struct FlagTableUnit_ *unit = table->row_v[conf->group_idx];
+        struct FlagTableUnit_ *unit = table->array + conf->group_idx * ARGPX_FLAG_TABLE_SIZE;
         unit += name_hash % ARGPX_FLAG_TABLE_SIZE;
 
-        unit = EnterFlagTableUnit_(unit);
+        unit = FlagTableEnterUnit_(unit);
         if (unit == NULL) {
-            free(table->row_v);
-            free(table);
+            free(table->array);
             return NULL;
         }
 
@@ -246,10 +245,10 @@ static struct FlagTable_ *MakeFlagTable_(struct ArgpxStyle style[static 1], stru
 }
 
 /*
-    Note: do not free up the parameter "unit", it is managed by row memory.
+    Note: it won't free up the parameter "unit", that's managed by table.array.
     Note: this function won't check .used element of root unit.
  */
-static void FreeRecursiveFlagTableUnit_(struct FlagTableUnit_ unit[static 1])
+static void FlagTableFreeRecursiveUnit_(struct FlagTableUnit_ unit[static 1])
 {
     if (unit->next == NULL)
         return;
@@ -264,19 +263,18 @@ static void FreeRecursiveFlagTableUnit_(struct FlagTableUnit_ unit[static 1])
     return;
 }
 
-static void FreeFlagTable_(struct FlagTable_ table[static 1])
+static void FlagTableFree_(struct FlagTable_ table[static 1])
 {
-    for (int row = 0; row < table->row_c; row++) {
-        for (int col = 0; col < ARGPX_FLAG_TABLE_SIZE; col++) {
-            struct FlagTableUnit_ *unit = &table->row_v[row][col];
-            if (unit->used == false)
-                continue;
-            FreeRecursiveFlagTableUnit_(unit);
-        }
-        free(table->row_v[row]);
+    for (int i = 0; i < table->row_c * ARGPX_FLAG_TABLE_SIZE; i++) {
+        struct FlagTableUnit_ *unit = &table->array[i];
+        if (unit->used == false)
+            continue;
+        FlagTableFreeRecursiveUnit_(unit);
     }
-    free(table);
+    free(table->array);
 }
+
+#endif
 
 /*
     Using the offset shift arguments, it will be safe.
@@ -460,7 +458,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
         }
 
         size_t param_len;
-        char *delimiter_ptr = memmem_(param_now, grp->item.delimiter, remaining, grp->delimiter_len);
+        char *delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining);
         if (delimiter_ptr == NULL) {
             if (unit_idx == conf->action_load.param_multi.count - 1) {
                 param_len = remaining;
@@ -549,7 +547,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
 
     char *delimiter_ptr;
     for (int param_idx = 0; remaining_len > 0; param_idx++) {
-        delimiter_ptr = memmem_(param_now, grp->item.delimiter, remaining_len, grp->delimiter_len);
+        delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining_len);
 
         int param_len;
         if (delimiter_ptr == NULL) {
@@ -750,7 +748,7 @@ static struct ArgpxFlag *MatchConfHash_(
     }
 
     uint32_t name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
-    struct FlagTableUnit_ *unit = data->conf_table->row_v[grp->idx];
+    struct FlagTableUnit_ *unit = data->conf_table.array + grp->idx * ARGPX_FLAG_TABLE_SIZE;
     unit += name_hash % ARGPX_FLAG_TABLE_SIZE;
 
     if (unit->used == false) {
@@ -779,9 +777,9 @@ static struct ArgpxFlag *MatchConfHash_(
 static struct ArgpxFlag *MatchConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], size_t max_name_len, bool shortest)
 {
-    #ifdef ARGPX_DEV_HASH_坏👎
+#ifndef ARGPX_DEV_ENABLE_HASH
     return MatchConfLinear_(data, grp, name_start, max_name_len, shortest);
-    #endif
+#endif
 
     if (max_name_len == 0) {
         return MatchConfLinear_(data, grp, name_start, 0, shortest);
@@ -1031,13 +1029,12 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
     else
         data.terminate = *terminate;
 
-    #ifdef ARGPX_DEV_HASH_坏👎
-    data.conf_table = MakeFlagTable_(&data.style, &data.conf);
-    if (data.conf_table == NULL) {
+#ifdef ARGPX_DEV_ENABLE_HASH
+    if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
         data.res->status = kArgpxStatusMemoryError;
         return data.res;
     }
-    #endif
+#endif
 
     bool stop_parsing = false;
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
@@ -1093,9 +1090,9 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
             goto out;
     }
 
-    out:
-    #ifdef ARGPX_DEV_HASH_坏👎
-    FreeFlagTable_(data.conf_table);
-    # endif
+out:
+#ifdef ARGPX_DEV_ENABLE_HASH
+    FlagTableFree_(&data.conf_table);
+#endif
     return data.res;
 }

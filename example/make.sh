@@ -10,11 +10,13 @@ src_code=(
 
 cflag=(
     "-std=c99"
-    "-Wall"
     "-I../include/"
-    "-O0"
-    "-g"
+    "-Wall"
     "-Wvla"
+    "-Og"
+    "-g"
+    # for gprof
+    # "-pg"
 )
 
 # https://unix.stackexchange.com/a/193660

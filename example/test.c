@@ -12,9 +12,8 @@ static void Error_(struct ArgpxResult *res)
         exit(EXIT_FAILURE);
     }
 
-    printf("Error, parser status: %d\n", res->status);
-    printf("%s\n", ArgpxStatusString(res->status));
-    printf("Problematic argument(index %d): %s\n", res->current_argv_idx, res->current_argv_ptr);
+    printf("ArgParseX error [%d]: %s\n", res->status, ArgpxStatusString(res->status));
+    printf("index: %d, str: %s\n", res->current_argv_idx, res->current_argv_ptr);
     exit(EXIT_FAILURE);
 }
 
@@ -157,6 +156,8 @@ int main(int argc, char *argv[])
         printf("%s\n", res->param_v[i]);
 
     ArgpxFreeResult(res);
+    ArgpxFreeStyle(&style);
+    ArgpxFreeFlag(&flag);
 
     return 0;
 }

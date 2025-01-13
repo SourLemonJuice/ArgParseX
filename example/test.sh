@@ -59,6 +59,7 @@ function AssertFailure {
 
     command -- $@
     if [[ $? -eq 0 ]]; then
+        separator - 3
         echo "[Failure] Assert failed, expected Failure(1) -- $@"
         exit 1
     fi
