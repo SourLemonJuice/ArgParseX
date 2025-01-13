@@ -9,7 +9,7 @@
 
 #include "argpx_hash.h"
 
-#define ARGPX_FLAG_TABLE_SIZE 42
+#define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
 // #define ARGPX_USE_HASH
 
 struct FlagTableUnit_ {
@@ -22,6 +22,7 @@ struct FlagTableUnit_ {
 
 struct FlagTable_ {
     int row_c;
+    int col_c; // calculated by TABLE_LOADFACTOR dynamics
     struct FlagTableUnit_ *array;
 };
 
@@ -178,10 +179,11 @@ void ArgpxFreeResult(struct ArgpxResult res[static 1])
     Return the pointer of table self.
     return NULL: error
  */
-static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ table[static 1], int row_c)
+static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ table[static 1], int group_count, int flag_count)
 {
-    table->row_c = row_c;
-    table->array = malloc(sizeof(struct FlagTableUnit_) * table->row_c * ARGPX_FLAG_TABLE_SIZE);
+    table->row_c = group_count;
+    table->col_c = flag_count / ARGPX_FLAG_TABLE_LOADFACTOR;
+    table->array = malloc(sizeof(struct FlagTableUnit_) * table->row_c * table->col_c);
     if (table->array == NULL)
         return NULL;
 
@@ -212,25 +214,25 @@ static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ unit[sta
     return NULL: error
  */
 static struct FlagTable_ *FlagTableMake_(
-    struct ArgpxStyle style[static 1], struct ArgpxFlagSet set[static 1], struct FlagTable_ table[static 1])
+    struct ArgpxStyle style[static 1], struct ArgpxFlagSet flagset[static 1], struct FlagTable_ table[static 1])
 {
-    table = FlagTableAlloc_(table, style->group_c);
+    table = FlagTableAlloc_(table, style->group_c, flagset->count);
     if (table == NULL) {
         return NULL;
     }
 
-    for (int i = 0; i < table->row_c * ARGPX_FLAG_TABLE_SIZE; i++) {
+    for (int i = 0; i < table->row_c * table->col_c; i++) {
         table->array[i] = (struct FlagTableUnit_){.used = false};
     }
 
     // init finished
 
-    for (int i = 0; i < set->count; i++) {
-        struct ArgpxFlag *conf = &set->ptr[i];
+    for (int i = 0; i < flagset->count; i++) {
+        struct ArgpxFlag *conf = &flagset->ptr[i];
 
         uint32_t name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
-        struct FlagTableUnit_ *unit = table->array + conf->group_idx * ARGPX_FLAG_TABLE_SIZE;
-        unit += name_hash % ARGPX_FLAG_TABLE_SIZE;
+        struct FlagTableUnit_ *unit = table->array + conf->group_idx * table->col_c;
+        unit += name_hash % table->col_c;
 
         unit = FlagTableEnterUnit_(unit);
         if (unit == NULL) {
@@ -259,13 +261,11 @@ static void FlagTableFreeRecursiveUnit_(struct FlagTableUnit_ unit[static 1])
         free(unit);
         unit = ahead_unit;
     } while (unit != NULL);
-
-    return;
 }
 
 static void FlagTableFree_(struct FlagTable_ table[static 1])
 {
-    for (int i = 0; i < table->row_c * ARGPX_FLAG_TABLE_SIZE; i++) {
+    for (int i = 0; i < table->row_c * table->col_c; i++) {
         struct FlagTableUnit_ *unit = &table->array[i];
         if (unit->used == false)
             continue;
@@ -538,9 +538,9 @@ void ArgpxFreeFlagParamList(const int count, char **list)
     return negative: error and set status
  */
 static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    const struct ArgpxFlag conf_ptr[static 1], const char *param_start_ptr, const size_t max_param_len)
+    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, size_t max_param_len)
 {
-    const char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
+    char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
     if (param_now == NULL)
         return -1;
     int remaining_len = max_param_len > 0 ? max_param_len : strlen(param_now);
@@ -748,8 +748,8 @@ static struct ArgpxFlag *MatchConfHash_(
     }
 
     uint32_t name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
-    struct FlagTableUnit_ *unit = data->conf_table.array + grp->idx * ARGPX_FLAG_TABLE_SIZE;
-    unit += name_hash % ARGPX_FLAG_TABLE_SIZE;
+    struct FlagTableUnit_ *unit = data->conf_table.array + grp->idx * data->conf_table.col_c;
+    unit += name_hash % data->conf_table.col_c;
 
     if (unit->used == false) {
         data->res->status = kArgpxStatusUnknownFlag;

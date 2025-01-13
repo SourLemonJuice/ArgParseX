@@ -189,7 +189,7 @@ struct ArgpxResult {
     enum ArgpxStatus status;
     // index to the last parsed argument, processing maybe finished or maybe wrong
     int current_argv_idx;
-    // pretty much the same as current_argv_idx, but it's directly useable string
+    // pretty much the same as current_argv_idx, but it's directly available string
     char *current_argv_ptr;
     // parameter here is non-flag command "argument"
     int param_c;

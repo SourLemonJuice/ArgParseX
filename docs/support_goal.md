@@ -24,7 +24,6 @@
 - `--test=str`
 - `--test str`
 - `--test===str`
-- `--teststr`
 - `-t=str`
 - `-t str`
 - `-abct=str`
