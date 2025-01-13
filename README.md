@@ -16,11 +16,11 @@ Note the documents are always up-to-date, so make sure to check the correspondin
 
 The goal of ArgParseX is not to be simple use, which also make the interface look less nice. Some actual usage at here: [example/test.c](example/test.c)
 
-In short, the user need create a `struct ArgpxStyle` and append it with `ArgpxAppendGroup()` and `struct ArgpxGroup`.
+In short, the user need create a `struct ArgpxStyle` and append it with `ArgpxGroupAppend()` and `struct ArgpxGroup`.
 
 ```c
-struct ArgpxStyle style = {0}; // zero initialization is required
-ArgpxAppendGroup(&style, &(struct ArgpxGroup){
+struct ArgpxStyle style = ARGPX_STYLE_INIT;
+ArgpxGroupAppend(&style, &(struct ArgpxGroup){
     .prefix = "--",
     .assigner = "=",
     .delimiter = ",",
@@ -30,21 +30,21 @@ ArgpxAppendGroup(&style, &(struct ArgpxGroup){
 Although the built-in `item` is usable enough.
 
 ```c
-ArgpxAppendGroup(&style, ARGPX_GROUP_GNU);
+ArgpxGroupAppend(&style, ARGPX_GROUP_GNU);
 ```
 
 And add some stop parsing symbols:
 
 ```c
-ArgpxAppendSymbol(&style, ARGPX_SYMBOL_STOP_PARSING("--"));
-ArgpxAppendSymbol(&style, ARGPX_SYMBOL_STOP_PARSING("-"));
+ArgpxSymbolAppend(&style, ARGPX_SYMBOL_STOP_PARSING("--"));
+ArgpxSymbolAppend(&style, ARGPX_SYMBOL_STOP_PARSING("-"));
 ```
 
 Finally, the most important thing to define the content of flags:
 
 ```c
-struct ArgpxFlagSet flag = {0}; // zero initialization is required
-ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
+struct ArgpxFlagSet flag = ARGPX_FLAGSET_INIT;
+ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
     .group_idx = 0, // the first flag group that was be added(here is GNU)
     .name = "setbool",
     .action_type = kArgpxActionSetBool,
@@ -78,6 +78,8 @@ The "namespace" of identifiers is `argpx_xxx`.The base pointer of the array is n
 When building `source/argpx.c`, add define `ARGPX_USE_HASH` and link the `source/argpx_hash.c` unit to enable hash table mode for flag search.\
 It **would not** make simple task faster, even slower.\
 The critical value will be determined in the future.
+
+The hash function used now is FNV-1a 32bit.
 
 ## Benchmark
 

@@ -98,15 +98,17 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
 {
     switch (status) {
     case kArgpxStatusSuccess:
-        return "Processing success";
+        return "Process success";
     case kArgpxStatusFailure:
-        return "Generic unknown error or memory issue";
+        return "Generic unknown error";
+    case kArgpxStatusMemoryError:
+        return "Memory error";
     case kArgpxStatusConfigInvalid:
         return "There is an invalid group config, perhaps empty string";
     case kArgpxStatusUnknownFlag:
         return "Unknown flag name but the group prefix matched";
     case kArgpxStatusActionUnavailable:
-        return "Flag action type unavailable. Not implemented or configuration conflict";
+        return "Flag action unavailable. Not implemented or configuration conflict";
     case kArgpxStatusArgumentsDeficiency:
         return "There is no more argument available to get";
     case kArgpxStatusParamNoNeeded:
@@ -122,7 +124,7 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
     case kArgpxStatusBizarreFormat:
         return "Bizarre format occurs";
     default:
-        return "[ArgParseX - ArgpxStatusString(): not recorded]";
+        return "[Status code not recorded]";
     }
 }
 
@@ -130,7 +132,7 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
     For debug and more right to know, function will return the new group's index number.
     It can be used in .group_idx of struct ArgpxFlag.
  */
-int ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
+int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
 {
     style->group_c += 1;
 
@@ -141,20 +143,20 @@ int ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup 
     return new_idx;
 }
 
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
+void ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
 {
     style->symbol_c += 1;
     style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbol) * style->symbol_c);
     style->symbol_v[style->symbol_c - 1] = *new;
 }
 
-void ArgpxFreeStyle(struct ArgpxStyle style[static 1])
+void ArgpxStyleFree(struct ArgpxStyle style[static 1])
 {
     free(style->group_v);
     free(style->symbol_v);
 }
 
-void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
+void ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
 {
     set->count += 1;
 
@@ -162,12 +164,12 @@ void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag n
     set->ptr[set->count - 1] = *new;
 }
 
-void ArgpxFreeFlag(struct ArgpxFlagSet set[static 1])
+void ArgpxFlagFree(struct ArgpxFlagSet set[static 1])
 {
     free(set->ptr);
 }
 
-void ArgpxFreeResult(struct ArgpxResult res[static 1])
+void ArgpxResultFree(struct ArgpxResult res[static 1])
 {
     free(res->param_v);
     free(res);
@@ -314,7 +316,7 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
             res->param_v = realloc(res->param_v, sizeof(char *) * (res->param_c + 3));
     }
     if (res->param_v == NULL) {
-        res->status = kArgpxStatusFailure;
+        res->status = kArgpxStatusMemoryError;
         return -1;
     }
 
@@ -490,7 +492,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     Append a new item into a ParamList action. It can only be attached to the tail.
     The last_idx acts as both the counter(index + 1) and new item index.
 
-    return negative: error
+    return negative: error(memory error)
  */
 static int AppendParamList_(
     const struct ArgpxOutParamList outcome[static 1], const int last_idx, const char *str, const size_t str_len)
@@ -525,7 +527,7 @@ static int AppendParamList_(
 /*
     Clean up the struct ArgpxOutParamList.
  */
-void ArgpxFreeFlagParamList(const int count, char **list)
+void ArgpxParamListFree(const int count, char **list)
 {
     for (int i = 0; i < count; i++)
         free(list[i]);
@@ -562,7 +564,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
         }
 
         if (AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
-            data->res->status = kArgpxStatusFailure;
+            data->res->status = kArgpxStatusMemoryError;
             return -1;
         }
 

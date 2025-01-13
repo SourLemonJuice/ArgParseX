@@ -26,7 +26,7 @@ enum ArgpxStatus {
 };
 
 enum ArgpxActionType {
-    // only run callback, no any outcome
+    // only run callback, no any outcome(struct ArgpxOut*)
     // for safety, it's 0(default after zero init)
     kArgpxActionCallbackOnly = 0,
     // get a single flag parameter, but can still convert it's data type
@@ -92,6 +92,12 @@ struct ArgpxStyle {
     int symbol_c;
     struct ArgpxSymbol *symbol_v;
 };
+
+#define ARGPX_STYLE_INIT \
+    (struct ArgpxStyle) \
+    { \
+        .group_c = 0, .group_v = NULL, .symbol_c = 0, .symbol_v = NULL \
+    }
 
 enum ArgpxVarType {
     // string type will return a manually alloced full string(have \0)
@@ -169,6 +175,12 @@ struct ArgpxFlagSet {
     struct ArgpxFlag *ptr;
 };
 
+#define ARGPX_FLAGSET_INIT \
+    (struct ArgpxFlagSet) \
+    { \
+        .count = 0, .ptr = NULL \
+    }
+
 enum ArgpxHidden_TerminateMethod {
     kArgpxTerminateNone,
     kArgpxTerminateCmdparamLimit,
@@ -199,15 +211,15 @@ struct ArgpxResult {
 
 char *ArgpxStatusString(enum ArgpxStatus status);
 
-int ArgpxAppendGroup(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1]);
-void ArgpxAppendSymbol(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
-void ArgpxFreeStyle(struct ArgpxStyle style[static 1]);
+int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1]);
+void ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
+void ArgpxStyleFree(struct ArgpxStyle style[static 1]);
 
-void ArgpxAppendFlag(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
-void ArgpxFreeFlag(struct ArgpxFlagSet set[static 1]);
+void ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
+void ArgpxFlagFree(struct ArgpxFlagSet set[static 1]);
 
-void ArgpxFreeResult(struct ArgpxResult res[static 1]);
-void ArgpxFreeFlagParamList(int count, char **list);
+void ArgpxResultFree(struct ArgpxResult res[static 1]);
+void ArgpxParamListFree(int count, char **list);
 
 struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
     struct ArgpxTerminateMethod *terminate);
