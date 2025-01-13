@@ -9,8 +9,8 @@
 
 #include "argpx_hash.h"
 
-#define ARGPX_FLAG_TABLE_SIZE 48
-#define ARGPX_DEV_ENABLE_HASH
+#define ARGPX_FLAG_TABLE_SIZE 42
+// #define ARGPX_USE_HASH
 
 struct FlagTableUnit_ {
     // only check if the root key is used
@@ -172,7 +172,7 @@ void ArgpxFreeResult(struct ArgpxResult res[static 1])
     free(res);
 }
 
-#ifdef ARGPX_DEV_ENABLE_HASH
+#ifdef ARGPX_USE_HASH
 
 /*
     Return the pointer of table self.
@@ -777,7 +777,7 @@ static struct ArgpxFlag *MatchConfHash_(
 static struct ArgpxFlag *MatchConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
     char name_start[static 1], size_t max_name_len, bool shortest)
 {
-#ifndef ARGPX_DEV_ENABLE_HASH
+#ifndef ARGPX_USE_HASH
     return MatchConfLinear_(data, grp, name_start, max_name_len, shortest);
 #endif
 
@@ -1029,7 +1029,7 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
     else
         data.terminate = *terminate;
 
-#ifdef ARGPX_DEV_ENABLE_HASH
+#ifdef ARGPX_USE_HASH
     if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
         data.res->status = kArgpxStatusMemoryError;
         return data.res;
@@ -1091,7 +1091,7 @@ struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style
     }
 
 out:
-#ifdef ARGPX_DEV_ENABLE_HASH
+#ifdef ARGPX_USE_HASH
     FlagTableFree_(&data.conf_table);
 #endif
     return data.res;

@@ -73,6 +73,12 @@ And `-Wvla`(no Variable-length array).
 Code style follows [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html), and clang-format config.\
 The "namespace" of identifiers is `argpx_xxx`.The base pointer of the array is named `xxx_v`, its counter named `xxx_c`.
 
+## Hash table mode
+
+When building `source/argpx.c`, add define `ARGPX_USE_HASH` and link the `source/argpx_hash.c` unit to enable hash table mode for flag search.\
+It **would not** make simple task faster, even slower.\
+The critical value will be determined in the future.
+
 ## Benchmark
 
 In speed there is no advantage of ArgParseX over the classic GNU getopt. But the difference is less then double in the best case.\
@@ -105,7 +111,6 @@ Source code located in: [benchmark/](./benchmark/)
 
 ## Todo
 
-- 时间复杂度可能有点高的说，等最后肯定会去用哈希表什么的啦...
 - 重复匹配一个标志的后果？
 
 ## See also
