@@ -11,6 +11,72 @@
 #include <stdlib.h>
 
 
+typedef enum ArgpxStatus {
+  Okay = 0,
+  BadAttribute = 1,
+  NotAllowedSparseAssign = 2,
+  NotAllowedAssigner = 3,
+  InvalidParameters = 4,
+} ArgpxStatus;
+
+typedef struct FlagAction FlagAction;
+
+typedef struct Parser Parser;
+
+typedef struct String String;
+
+typedef struct Style Style;
+
+typedef struct ArgpxFlag {
+  uintptr_t group_id;
+  const char *name;
+  struct FlagAction *action;
+} ArgpxFlag;
+
+typedef struct String ArgpxString;
+
+typedef struct ArgpxParseResult {
+  ArgpxString *args;
+  uintptr_t args_count;
+} ArgpxParseResult;
+
+typedef struct ArgpxStyleGroup {
+  const char *prefix;
+  const char *assigner;
+  const char *delimiter;
+  uint8_t attribute;
+} ArgpxStyleGroup;
+
 void hello(void);
+
+struct Parser *ArgpxParser_New(struct Style **style);
+
+int32_t ArgpxParser_AppendFlag(struct Parser *parser, struct ArgpxFlag flag);
+
+enum ArgpxStatus ArgpxParser_Parse(struct Parser *parser,
+                                   uintptr_t args_count,
+                                   char *const *arg_ptr,
+                                   uintptr_t terminate_at,
+                                   struct ArgpxParseResult *out);
+
+void ArgpxParser_Free(struct Parser *parser);
+
+struct FlagAction *ArgpxAction_NewSetBool(bool *ptr);
+
+struct FlagAction *ArgpxAction_NewSetInt(int32_t *ptr);
+
+ArgpxString ArgpxString_New(void);
+
+uintptr_t ArgpxString_Length(const ArgpxString *s);
+
+char *ArgpxString_Read(ArgpxString **s);
+
+struct FlagAction *ArgpxAction_NewParamMulti(struct String *params, uintptr_t count);
+
+struct Style *ArgpxStyle_New(void);
+
+intptr_t ArgpxStyle_AppendGroup(struct Style *style, struct ArgpxStyleGroup group);
+
+void ArgpxStyle_Free(struct Style *style);
 
 #endif /* __ARGPX_RS */

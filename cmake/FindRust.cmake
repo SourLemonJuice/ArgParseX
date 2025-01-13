@@ -275,7 +275,7 @@ function(add_rust_library)
     list(APPEND MY_CARGO_ARGS "--target-dir" ${ARGS_BINARY_DIRECTORY})
     list(JOIN MY_CARGO_ARGS " " MY_CARGO_ARGS_STRING)
 
-    # Build the library and generate the impl_c-binding
+    # Build the library and generate the c-binding
     if("${CMAKE_OSX_ARCHITECTURES}" MATCHES "^(arm64;x86_64|x86_64;arm64)$")
         add_custom_command(
                 OUTPUT "${OUTPUT}"

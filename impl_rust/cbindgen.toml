@@ -17,13 +17,11 @@ no_includes = false
 after_includes = ""
 
 [export]
-include = ["hello"]
+include = []
 exclude = []
 # prefix = "CAPI_"
 item_types = []
 renaming_overrides_prefixing = false
-
-############## Options for How Your Rust library Should Be Parsed ##############
 
 [parse]
 parse_deps = false
