@@ -136,7 +136,7 @@ struct ArgpxOutSetInt {
     int *target_ptr;
 };
 
-// in library source code it is called "conf/config"
+// in library impl_c code it is called "conf/config"
 struct ArgpxFlag {
     // It's an index not an id
     // emm... I trust the programer can figure out the array index in their hands

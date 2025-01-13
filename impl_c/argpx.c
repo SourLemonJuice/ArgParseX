@@ -1,4 +1,4 @@
-#include "argpx/argpx.h"
+#include "argpx.h"
 
 #include <inttypes.h>
 #include <iso646.h>

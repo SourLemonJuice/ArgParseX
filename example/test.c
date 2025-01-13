@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "argpx/argpx.h"
+#include "argpx.h"
 
 static void Error_(struct ArgpxResult *res)
 {

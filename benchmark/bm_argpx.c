@@ -63,7 +63,7 @@ int main(void)
     });
     ArgpxAppendFlag(&flag, &(struct ArgpxFlag){
         .group_idx = 1,
-        .name = "c",
+        .name = "impl_c",
         .action_type = kArgpxActionParamSingle,
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &ans.f_param_of_c},
     });
