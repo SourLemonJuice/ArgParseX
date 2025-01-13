@@ -22,7 +22,7 @@ AllowShortBlocksOnASingleLine: Never
 AllowShortIfStatementsOnASingleLine: Never
 IndentCaseLabels: false
 IndentPPDirectives: BeforeHash
-IncludeBlocks: Preserve # because google c++ guide specifies the order of #include blocks
+IncludeBlocks: Preserve # because google impl_c++ guide specifies the order of #include blocks
 SortIncludes: CaseInsensitive
 ColumnLimit: 120 # same as Microsoft, don't ask me, I just think it's great
 InsertNewlineAtEOF: true # Who doesn't like \n in the file end
