@@ -10,7 +10,7 @@
 #include "argpx_hash.h"
 
 #define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
-// #define ARGPX_USE_HASH
+// #define ARGPX_USE_HASH // TODO change name
 
 struct FlagTableUnit_ {
     // only check if the root key is used
