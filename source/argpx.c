@@ -92,6 +92,29 @@ static char *strnstr_(const void *haystack_in, const void *needle_in, size_t hay
 }
 
 /*
+    Grow 1 slot for given array, but batch allocation of memorys.
+    Return the array base pointer.
+
+    return NULL: error
+ */
+static void *BatchGrow_(void *base, size_t unit_size, unsigned int current_c, unsigned int batch)
+{
+    if (unit_size == 0 or batch == 0)
+        return NULL;
+
+    if (base == NULL or current_c == 0) {
+        base = malloc(unit_size * batch);
+    } else if (current_c % batch == 0) {
+        // is full
+        base = realloc(base, unit_size * (current_c + batch));
+    }
+    if (base == NULL)
+        return NULL;
+
+    return base;
+}
+
+/*
     Convert structure ArgpxResult's ArgpxStatus enum to string.
  */
 char *ArgpxStatusString(const enum ArgpxStatus status)
@@ -131,23 +154,44 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
 /*
     For debug and more right to know, function will return the new group's index number.
     It can be used in .group_idx of struct ArgpxFlag.
+    Expand 3 slots at once.
+
+    return negative: error
  */
 int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
 {
-    style->group_c += 1;
+    if (style == NULL or new == NULL)
+        return -1;
 
+    style->group_v = BatchGrow_(style->group_v, sizeof(struct ArgpxGroup), style->group_c, 3);
+    if (style->group_v == NULL)
+        return -1;
+
+    style->group_c += 1;
     int new_idx = style->group_c - 1;
-    style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroup) * style->group_c);
     style->group_v[new_idx] = *new;
 
     return new_idx;
 }
 
-void ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
+/*
+    Like ArgpxGroupAppend(), for debug or other reason it'll return the new flag index.
+    Expand 3 slots at once.
+ */
+int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
 {
+    if (style == NULL or new == NULL)
+        return -1;
+
+    style->symbol_v = BatchGrow_(style->symbol_v, sizeof(struct ArgpxSymbol), style->symbol_c, 3);
+    if (style->symbol_v == NULL)
+        return -1;
+
     style->symbol_c += 1;
-    style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbol) * style->symbol_c);
-    style->symbol_v[style->symbol_c - 1] = *new;
+    int new_idx = style->symbol_c - 1;
+    style->symbol_v[new_idx] = *new;
+
+    return new_idx;
 }
 
 void ArgpxStyleFree(struct ArgpxStyle style[static 1])
@@ -156,12 +200,27 @@ void ArgpxStyleFree(struct ArgpxStyle style[static 1])
     free(style->symbol_v);
 }
 
-void ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
-{
-    set->count += 1;
+/*
+    Return the new flag's index.
+    Like ArgpxGroupAppend(), for debug or other reason it'll return the new flag index.
+    Expand 16 slots at once.
 
-    set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlag) * set->count);
-    set->ptr[set->count - 1] = *new;
+    return negative: error
+ */
+int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
+{
+    if (set == NULL or new == NULL)
+        return -1;
+
+    set->ptr = BatchGrow_(set->ptr, sizeof(struct ArgpxFlag), set->count, 16);
+    if (set->ptr == NULL)
+        return -1;
+
+    set->count += 1;
+    int new_idx = set->count - 1;
+    set->ptr[new_idx] = *new;
+
+    return new_idx;
 }
 
 void ArgpxFlagFree(struct ArgpxFlagSet set[static 1])
@@ -494,7 +553,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
 
     return negative: error(memory error)
  */
-static int AppendParamList_(
+static int ParamListAppend_(
     const struct ArgpxOutParamList outcome[static 1], const int last_idx, const char *str, const size_t str_len)
 {
     *outcome->count_ptr = last_idx + 1;
@@ -503,9 +562,8 @@ static int AppendParamList_(
 
     if (last_idx == 0) {
         list = malloc(sizeof(char *) * 3);
-    } else {
-        if ((last_idx + 1) % 4 == 0)
-            list = realloc(*outcome->list_ptr, sizeof(char *) * (last_idx + 1 + 3));
+    } else if ((last_idx + 1) % 4 == 0) {
+        list = realloc(*outcome->list_ptr, sizeof(char *) * (last_idx + 1 + 3));
     }
     if (list == NULL)
         return -1;
@@ -563,7 +621,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
             }
         }
 
-        if (AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
+        if (ParamListAppend_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
             data->res->status = kArgpxStatusMemoryError;
             return -1;
         }
