@@ -212,10 +212,10 @@ struct ArgpxResult {
 char *ArgpxStatusString(enum ArgpxStatus status);
 
 int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1]);
-void ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
+int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
 void ArgpxStyleFree(struct ArgpxStyle style[static 1]);
 
-void ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
+int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
 void ArgpxFlagFree(struct ArgpxFlagSet set[static 1]);
 
 void ArgpxResultFree(struct ArgpxResult res[static 1]);

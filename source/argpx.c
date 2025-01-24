@@ -11,6 +11,7 @@
 
 #define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
 // #define ARGPX_USE_HASH // TODO change name
+// #define ARGPX_USE_BATCH_ALLOC
 
 struct FlagTableUnit_ {
     // only check if the root key is used
@@ -136,18 +137,23 @@ int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup 
 {
     style->group_c += 1;
 
-    int new_idx = style->group_c - 1;
     style->group_v = realloc(style->group_v, sizeof(struct ArgpxGroup) * style->group_c);
-    style->group_v[new_idx] = *new;
+    style->group_v[style->group_c - 1] = *new;
 
-    return new_idx;
+    return style->group_c - 1;
 }
 
-void ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
+/*
+    Like ArgpxGroupAppend(), return the new symbol index.
+ */
+int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
 {
     style->symbol_c += 1;
+
     style->symbol_v = realloc(style->symbol_v, sizeof(struct ArgpxSymbol) * style->symbol_c);
     style->symbol_v[style->symbol_c - 1] = *new;
+
+    return style->symbol_c - 1;
 }
 
 void ArgpxStyleFree(struct ArgpxStyle style[static 1])
@@ -156,12 +162,17 @@ void ArgpxStyleFree(struct ArgpxStyle style[static 1])
     free(style->symbol_v);
 }
 
-void ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
+/*
+    Like ArgpxGroupAppend(), return the new flag index.
+ */
+int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
 {
     set->count += 1;
 
     set->ptr = realloc(set->ptr, sizeof(struct ArgpxFlag) * set->count);
     set->ptr[set->count - 1] = *new;
+
+    return set->count - 1;
 }
 
 void ArgpxFlagFree(struct ArgpxFlagSet set[static 1])
@@ -494,19 +505,28 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
 
     return negative: error(memory error)
  */
-static int AppendParamList_(
+static int ParamListAppend_(
     const struct ArgpxOutParamList outcome[static 1], const int last_idx, const char *str, const size_t str_len)
 {
     *outcome->count_ptr = last_idx + 1;
 
     char **list = *outcome->list_ptr;
 
+#ifndef ARGPX_USE_BATCH_ALLOC
+    if (last_idx == 0) {
+        list = malloc(sizeof(char *) * (last_idx + 1));
+    } else {
+        list = realloc(list, sizeof(char *) * (last_idx + 1));
+    }
+#else
     if (last_idx == 0) {
         list = malloc(sizeof(char *) * 3);
     } else {
         if ((last_idx + 1) % 4 == 0)
-            list = realloc(*outcome->list_ptr, sizeof(char *) * (last_idx + 1 + 3));
+            list = realloc(list, sizeof(char *) * (last_idx + 1 + 3));
     }
+#endif
+
     if (list == NULL)
         return -1;
 
@@ -563,7 +583,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
             }
         }
 
-        if (AppendParamList_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
+        if (ParamListAppend_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
             data->res->status = kArgpxStatusMemoryError;
             return -1;
         }
