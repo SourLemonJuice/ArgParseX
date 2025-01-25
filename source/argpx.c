@@ -93,22 +93,27 @@ static char *strnstr_(const void *haystack_in, const void *needle_in, size_t hay
 }
 
 /*
-    Grow 1 slot for given array, but batch allocation of memorys.
+    Grow 1 slot for given array. If batch alloc enabled, it will allocate many items at a time.
     Return the array base pointer.
 
     return NULL: error
  */
-static void *BatchGrow_(void *base, size_t unit_size, unsigned int current_c, unsigned int batch)
+static void *ArrGrowOneSlot_(void *base, size_t unit_size, unsigned int current_c, unsigned int batch)
 {
     if (unit_size == 0 or batch == 0)
         return NULL;
 
+#ifdef ARGPX_USE_BATCH_ALLOC
     if (base == NULL or current_c == 0) {
         base = malloc(unit_size * batch);
     } else if (current_c % batch == 0) {
         // is full
         base = realloc(base, unit_size * (current_c + batch));
     }
+#else
+    base = realloc(base, unit_size * (current_c + 1));
+#endif
+
     if (base == NULL)
         return NULL;
 
@@ -164,7 +169,7 @@ int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup 
     if (style == NULL or new == NULL)
         return -1;
 
-    style->group_v = BatchGrow_(style->group_v, sizeof(struct ArgpxGroup), style->group_c, 3);
+    style->group_v = ArrGrowOneSlot_(style->group_v, sizeof(struct ArgpxGroup), style->group_c, 3);
     if (style->group_v == NULL)
         return -1;
 
@@ -186,7 +191,7 @@ int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbo
     if (style == NULL or new == NULL)
         return -1;
 
-    style->symbol_v = BatchGrow_(style->symbol_v, sizeof(struct ArgpxSymbol), style->symbol_c, 3);
+    style->symbol_v = ArrGrowOneSlot_(style->symbol_v, sizeof(struct ArgpxSymbol), style->symbol_c, 3);
     if (style->symbol_v == NULL)
         return -1;
 
@@ -214,7 +219,7 @@ int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag ne
     if (set == NULL or new == NULL)
         return -1;
 
-    set->ptr = BatchGrow_(set->ptr, sizeof(struct ArgpxFlag), set->count, 16);
+    set->ptr = ArrGrowOneSlot_(set->ptr, sizeof(struct ArgpxFlag), set->count, 16);
     if (set->ptr == NULL)
         return -1;
 
@@ -553,6 +558,8 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
     Append a new item into a ParamList action. It can only be attached to the tail.
     The last_idx acts as both the counter(index + 1) and new item index.
 
+    If batch alloc enabled, allocate 3 slots of the list at a time.
+
     return negative: error(memory error)
  */
 static int ParamListAppend_(
@@ -562,21 +569,7 @@ static int ParamListAppend_(
 
     char **list = *outcome->list_ptr;
 
-#ifndef ARGPX_USE_BATCH_ALLOC
-    if (last_idx == 0) {
-        list = malloc(sizeof(char *) * (last_idx + 1));
-    } else {
-        list = realloc(list, sizeof(char *) * (last_idx + 1));
-    }
-#else
-    if (last_idx == 0) {
-        list = malloc(sizeof(char *) * 3);
-    } else {
-        if ((last_idx + 1) % 4 == 0)
-            list = realloc(list, sizeof(char *) * (last_idx + 1 + 3));
-    }
-#endif
-
+    list = ArrGrowOneSlot_(list, sizeof(char *), *outcome->count_ptr, 3);
     if (list == NULL)
         return -1;
 
