@@ -133,22 +133,24 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
     case kArgpxStatusMemoryError:
         return "Memory error";
     case kArgpxStatusConfigInvalid:
-        return "There is an invalid group config, perhaps empty string";
+        return "Invalid group config, perhaps empty string";
     case kArgpxStatusUnknownFlag:
-        return "Unknown flag name but the group prefix matched";
+        return "Unknown flag name, but group identified";
     case kArgpxStatusActionUnavailable:
         return "Flag action unavailable. Not implemented or configuration conflict";
-    case kArgpxStatusArgumentsDeficiency:
-        return "There is no more argument available to get";
+    case kArgpxStatusArgumentsInsufficient:
+        return "Command gets insufficient arguments";
+    case kArgpxStatusParamExcess:
+        return "Flag gets excess parameters";
     case kArgpxStatusParamNoNeeded:
-        return "This flag don't need parameter, but the input seems to be assigning a value";
+        return "Flag doesn't need parameters, but a value is being assigned";
     case kArgpxStatusAssignmentDisallowAssigner:
         return "Detected assignment mode is Assigner, but unavailable";
     case kArgpxStatusAssignmentDisallowTrailing:
         return "Detected assignment mode is Trailing, but unavailable";
     case kArgpxStatusAssignmentDisallowArg:
-        return "Detected assignment mode is Arg(argument), but unavailable";
-    case kArgpxStatusParamDeficiency:
+        return "Detected assignment mode is Arg, but unavailable";
+    case kArgpxStatusParamInsufficient:
         return "Flag gets insufficient parameters";
     case kArgpxStatusBizarreFormat:
         return "Bizarre format occurs";
@@ -353,7 +355,7 @@ static void FlagTableFree_(struct FlagTable_ table[static 1])
 static char *ShiftArguments_(struct UnifiedData_ data[static 1], const int offset)
 {
     if (data->arg_idx + offset >= data->arg_c) {
-        data->res->status = kArgpxStatusArgumentsDeficiency;
+        data->res->status = kArgpxStatusArgumentsInsufficient;
         return NULL;
     }
     data->arg_idx += offset;
@@ -494,7 +496,7 @@ static int ActionParamSingle_(
         param_len = strlen(param_start);
 
     if (param_len <= 0) {
-        data->res->status = kArgpxStatusParamDeficiency;
+        data->res->status = kArgpxStatusParamInsufficient;
         return -1;
     }
 
@@ -531,7 +533,7 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
             if (unit_idx == conf->action_load.param_multi.count - 1) {
                 param_len = remaining;
             } else {
-                data->res->status = kArgpxStatusParamDeficiency;
+                data->res->status = kArgpxStatusParamInsufficient;
                 return -1;
             }
         } else {
@@ -603,8 +605,10 @@ void ArgpxParamListFree(const int count, char **list)
     return negative: error and set status
  */
 static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf_ptr[static 1], char *param_start_ptr, size_t max_param_len)
+    struct ArgpxFlag conf[static 1], char *param_start_ptr, size_t max_param_len)
 {
+    struct ArgpxOutParamList *out = &conf->action_load.param_list;
+
     char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
     if (param_now == NULL)
         return -1;
@@ -612,6 +616,11 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
 
     char *delimiter_ptr;
     for (int param_idx = 0; remaining_len > 0; param_idx++) {
+        if (out->max > 0 and param_idx + 1 > out->max) {
+            data->res->status = kArgpxStatusParamExcess;
+            return -1;
+        }
+
         delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining_len);
 
         int param_len;
@@ -626,7 +635,7 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
             }
         }
 
-        if (ParamListAppend_(&conf_ptr->action_load.param_list, param_idx, param_now, param_len) < 0) {
+        if (ParamListAppend_(out, param_idx, param_now, param_len) < 0) {
             data->res->status = kArgpxStatusMemoryError;
             return -1;
         }

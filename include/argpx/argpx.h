@@ -14,10 +14,11 @@ enum ArgpxStatus {
     kArgpxStatusConfigInvalid,
     kArgpxStatusUnknownFlag,
     kArgpxStatusActionUnavailable,
-    kArgpxStatusArgumentsDeficiency,
+    kArgpxStatusArgumentsInsufficient,
 
     kArgpxStatusParamNoNeeded,
-    kArgpxStatusParamDeficiency,
+    kArgpxStatusParamInsufficient,
+    kArgpxStatusParamExcess,
 
     kArgpxStatusAssignmentDisallowAssigner,
     kArgpxStatusAssignmentDisallowTrailing,
@@ -124,6 +125,8 @@ struct ArgpxOutParamMulti {
 struct ArgpxOutParamList {
     int *count_ptr;
     char ***list_ptr; // pointer to a pointer list to a string list...
+    // if <= 0, no limit
+    int max;
 };
 
 struct ArgpxOutSetMemory {

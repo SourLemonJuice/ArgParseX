@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
         .group_idx = 0,
         .name = "paramlist",
         .action_type = kArgpxActionParamList,
-        .action_load.param_list = {.count_ptr = &test_param_list_count, .list_ptr = &test_param_list},
+        .action_load.param_list = {.count_ptr = &test_param_list_count, .list_ptr = &test_param_list, .max = 3},
         .callback = CbParamList_,
         .callback_param = NULL,
     });
