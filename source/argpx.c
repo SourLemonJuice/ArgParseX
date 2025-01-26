@@ -138,8 +138,6 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
         return "Unknown flag name, but group identified";
     case kArgpxStatusActionUnavailable:
         return "Flag action unavailable. Not implemented or configuration conflict";
-    case kArgpxStatusArgumentsInsufficient:
-        return "Command gets insufficient arguments";
     case kArgpxStatusParamExcess:
         return "Flag gets excess parameters";
     case kArgpxStatusParamNoNeeded:
@@ -350,14 +348,12 @@ static void FlagTableFree_(struct FlagTable_ table[static 1])
     Using the offset shift arguments, it will be safe.
     Return a pointer to the new argument.
 
-    return NULL: error and set status
+    return NULL: error
  */
 static char *ShiftArguments_(struct UnifiedData_ data[static 1], const int offset)
 {
-    if (data->arg_idx + offset >= data->arg_c) {
-        data->res->status = kArgpxStatusArgumentsInsufficient;
+    if (data->arg_idx + offset >= data->arg_c)
         return NULL;
-    }
     data->arg_idx += offset;
 
     return data->arg_v[data->arg_idx];
@@ -489,8 +485,10 @@ static int ActionParamSingle_(
 
     if (param_start == NULL)
         param_start = ShiftArguments_(data, 1);
-    if (param_start == NULL)
+    if (param_start == NULL) {
+        data->res->status = kArgpxStatusParamInsufficient;
         return -1;
+    }
 
     if (param_len <= 0)
         param_len = strlen(param_start);
@@ -522,8 +520,10 @@ static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedG
 
         if (unit_idx == 0) {
             param_now = param_base != NULL ? param_base : ShiftArguments_(data, 1);
-            if (param_now == NULL)
+            if (param_now == NULL) {
+                data->res->status = kArgpxStatusParamInsufficient;
                 return -1;
+            }
             remaining = range > 0 ? range : strlen(param_base);
         }
 
@@ -610,8 +610,10 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
     struct ArgpxOutParamList *out = &conf->action_load.param_list;
 
     char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
-    if (param_now == NULL)
+    if (param_now == NULL) {
+        data->res->status = kArgpxStatusParamInsufficient;
         return -1;
+    }
     int remaining_len = max_param_len > 0 ? max_param_len : strlen(param_now);
 
     char *delimiter_ptr;

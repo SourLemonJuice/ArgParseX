@@ -14,7 +14,6 @@ enum ArgpxStatus {
     kArgpxStatusConfigInvalid,
     kArgpxStatusUnknownFlag,
     kArgpxStatusActionUnavailable,
-    kArgpxStatusArgumentsInsufficient,
 
     kArgpxStatusParamNoNeeded,
     kArgpxStatusParamInsufficient,
