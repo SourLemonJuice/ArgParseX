@@ -25,6 +25,17 @@ static char *BoolToString_(bool input)
         return "false";
 }
 
+static void CbParamList_(void *action_load, void *param_in)
+{
+    struct ArgpxOutParamList *out = action_load;
+
+    for (int i = 0; i < *out->count_ptr; i++) {
+        printf("idx: %d, str: %s\n", i, (*out->list_ptr)[i]);
+    }
+
+    ArgpxParamListFree(*out->count_ptr, *out->list_ptr);
+}
+
 int main(int argc, char *argv[])
 {
     char *test_str1 = NULL;
@@ -104,6 +115,8 @@ int main(int argc, char *argv[])
         .name = "paramlist",
         .action_type = kArgpxActionParamList,
         .action_load.param_list = {.count_ptr = &test_param_list_count, .list_ptr = &test_param_list},
+        .callback = CbParamList_,
+        .callback_param = NULL,
     });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
@@ -147,9 +160,6 @@ int main(int argc, char *argv[])
     printf("--setbool:\t\t%s\n", BoolToString_(test_bool));
     printf("-a:\t\t\t%s\n", BoolToString_(test_bool2));
     printf("--setint:\t\t%d\n", test_int);
-
-    for (int i = 0; i < test_param_list_count; i++)
-        printf("paramlist index: %d: %s\n", i, test_param_list[i]);
 
     printf("==== command parameters ====\n");
     for (int i = 0; i < res->param_c; i++)
