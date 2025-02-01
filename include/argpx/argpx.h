@@ -33,8 +33,6 @@ enum ArgpxActionType {
     kArgpxActionParamSingle,
     // same as ParamSingle, but allocate output memory with itself
     kArgpxActionParamSingleOnDemand,
-    // get multiple flag parameters with different data type
-    kArgpxActionParamMulti,
     // get flag parameters raw string array, the array size is dynamic
     // the caller need to manually free up them with ArgpxFreeFlagParamList()!!!
     kArgpxActionParamList,
@@ -119,12 +117,6 @@ struct ArgpxOutParamSingle {
     void *var_ptr;
 };
 
-struct ArgpxOutParamMulti {
-    int count;
-    // parameter format units array
-    struct ArgpxOutParamSingle *unit_v;
-};
-
 struct ArgpxOutParamList {
     int *count_ptr;
     char ***list_ptr; // pointer to a pointer list to a string list...
@@ -161,7 +153,6 @@ struct ArgpxFlag {
     enum ArgpxActionType action_type;
     union {
         struct ArgpxOutParamSingle param_single;
-        struct ArgpxOutParamMulti param_multi;
         struct ArgpxOutParamList param_list;
         struct ArgpxOutSetMemory set_memory;
         struct ArgpxOutSetBool set_bool;

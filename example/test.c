@@ -44,10 +44,10 @@ static void CbParamList_(void *action_load, void *param_in)
 
 int main(int argc, char *argv[])
 {
-    char *test_str1 = NULL;
-    char *test_str2 = NULL;
-    char *test_str21 = NULL;
-    char *test_str22 = NULL;
+    // char *test_str1 = NULL;
+    // char *test_str2 = NULL;
+    // char *test_str21 = NULL;
+    // char *test_str22 = NULL;
     char *test_str31 = NULL;
     char *test_win_str1 = NULL;
     char *test_win_str2 = NULL;
@@ -82,17 +82,17 @@ int main(int argc, char *argv[])
     ArgpxSymbolAppend(&style, ARGPX_SYMBOL_STOP_PARSING("-"));
 
     struct ArgpxFlagSet flag = ARGPX_FLAGSET_INIT;
-    ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
-        .group_idx = 0,
-        .name = "test",
-        .action_type = kArgpxActionParamMulti,
-        .action_load.param_multi.count = 2,
-        .action_load.param_multi.unit_v =
-            (struct ArgpxOutParamSingle[]){
-                {.type = kArgpxVarString, .var_ptr = &test_str1},
-                {.type = kArgpxVarString, .var_ptr = &test_str2},
-            },
-    });
+    // ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
+    //     .group_idx = 0,
+    //     .name = "test",
+    //     .action_type = kArgpxActionParamMulti,
+    //     .action_load.param_multi.count = 2,
+    //     .action_load.param_multi.unit_v =
+    //         (struct ArgpxOutParamSingle[]){
+    //             {.type = kArgpxVarString, .var_ptr = &test_str1},
+    //             {.type = kArgpxVarString, .var_ptr = &test_str2},
+    //         },
+    // });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "setbool",
@@ -105,17 +105,17 @@ int main(int argc, char *argv[])
         .action_type = kArgpxActionSetInt,
         .action_load.set_int = {.source = 123, .target_ptr = &test_int},
     });
-    ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
-        .group_idx = 1,
-        .name = "test2",
-        .action_type = kArgpxActionParamMulti,
-        .action_load.param_multi.count = 2,
-        .action_load.param_multi.unit_v =
-            (struct ArgpxOutParamSingle[]){
-                {.type = kArgpxVarString, .var_ptr = &test_str21},
-                {.type = kArgpxVarString, .var_ptr = &test_str22},
-            },
-    });
+    // ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
+    //     .group_idx = 1,
+    //     .name = "test2",
+    //     .action_type = kArgpxActionParamMulti,
+    //     .action_load.param_multi.count = 2,
+    //     .action_load.param_multi.unit_v =
+    //         (struct ArgpxOutParamSingle[]){
+    //             {.type = kArgpxVarString, .var_ptr = &test_str21},
+    //             {.type = kArgpxVarString, .var_ptr = &test_str22},
+    //         },
+    // });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "paramlist",
@@ -160,8 +160,8 @@ int main(int argc, char *argv[])
     if (res->status != kArgpxStatusSuccess)
         Error_(res);
 
-    printf("test_str group 1:\t%s, %s\n", test_str1, test_str2);
-    printf("test_str group 2:\t%s, %s\n", test_str21, test_str22);
+    // printf("test_str group 1:\t%s, %s\n", test_str1, test_str2);
+    // printf("test_str group 2:\t%s, %s\n", test_str21, test_str22);
     printf("test_str group 3:\t%s\n", test_str31);
     printf("/win1 and /win2:\t%s, %s\n", test_win_str1, test_win_str2);
     printf("--setbool:\t\t%s\n", BoolToString_(test_bool));

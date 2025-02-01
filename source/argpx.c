@@ -527,59 +527,6 @@ static int ActionParamSingle_(
 }
 
 /*
-    If param_start_ptr is NULL, then use the next argument string, which also respect the delimiter.
-
-    If range <= 0 then no limit.
-
-    return negative: error and set status
- */
-static int ActionParamMulti_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf[static 1], char *param_base, size_t range)
-{
-    char *param_now;
-    size_t remaining;
-    for (int unit_idx = 0; unit_idx < conf->action_load.param_multi.count; unit_idx++) {
-        struct ArgpxOutParamSingle *unit = &conf->action_load.param_multi.unit_v[unit_idx];
-
-        if (unit_idx == 0) {
-            param_now = param_base != NULL ? param_base : ShiftArguments_(data, 1);
-            if (param_now == NULL) {
-                data->res->status = kArgpxStatusParamInsufficient;
-                return -1;
-            }
-            remaining = range > 0 ? range : strlen(param_base);
-        }
-
-        size_t param_len;
-        char *delimiter_ptr = strnstr_(param_now, grp->item.delimiter, remaining);
-        if (delimiter_ptr == NULL) {
-            if (unit_idx == conf->action_load.param_multi.count - 1) {
-                param_len = remaining;
-            } else {
-                data->res->status = kArgpxStatusParamInsufficient;
-                return -1;
-            }
-        } else {
-            param_len = delimiter_ptr - param_now;
-        }
-
-        StringToType_(param_now, param_len, unit->type, unit->var_ptr);
-
-        size_t seq_len = param_len + grp->delimiter_len;
-        param_now += seq_len;
-        // no --test=a,b,
-        // remaining always > 1 * seq or = seq - delimiter
-        if (remaining == seq_len) {
-            data->res->status = kArgpxStatusBizarreFormat;
-            return -1;
-        }
-        remaining -= seq_len;
-    }
-
-    return 0;
-}
-
-/*
     Append a new item into a ParamList action. It can only be attached to the tail.
     The last_idx acts as both the counter(index + 1) and new item index.
 
@@ -774,7 +721,6 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], const s
         return false;
     case kArgpxActionParamSingle:
     case kArgpxActionParamSingleOnDemand:
-    case kArgpxActionParamMulti:
     case kArgpxActionParamList:
     case kArgpxActionParamListOnDemand:
         return true;
@@ -964,10 +910,6 @@ static int ParseArgumentIndependent_(
         if (ActionParamSingle_(data, conf, true, param_base, 0) < 0)
             return -1;
         break;
-    case kArgpxActionParamMulti:
-        if (ActionParamMulti_(data, grp, conf, param_base, 0) < 0)
-            return -1;
-        break;
     case kArgpxActionParamList:
         if (ActionParamList_(data, grp, conf, false, param_base, 0) < 0)
             return -1;
@@ -1077,10 +1019,6 @@ static int ParseArgumentComposable_(
             break;
         case kArgpxActionParamSingleOnDemand:
             if (ActionParamSingle_(data, conf, true, param_start, param_len) < 0)
-                return -1;
-            break;
-        case kArgpxActionParamMulti:
-            if (ActionParamMulti_(data, grp, conf, param_start, param_len) < 0)
                 return -1;
             break;
         case kArgpxActionParamList:

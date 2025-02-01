@@ -1,5 +1,7 @@
 # 标志/Flag
 
+> TODO 添加 OnDemand 系列的注解
+
 主要参见 [example/test.c](../example/test.c) 中与 `ArgpxAppendFlag()` 函数相关的部分
 
 ## 动作/Action
@@ -29,6 +31,8 @@
 单个参数模式完全不会关心可能的分隔符，比如该模式下 `--test=a,b` 中的 `a,b` 会被识别为一个完整的参数
 
 ### 多个参数(kArgpxActionParamMulti)
+
+> 过于没用，已经被删掉啦
 
 相比于单个参数，多了检测中间的分隔符的能力
 
