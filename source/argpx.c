@@ -526,6 +526,11 @@ static int ActionParamSingle_(
     return 0;
 }
 
+void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1])
+{
+    free(out->var_ptr);
+}
+
 /*
     Append a new item into a ParamList action. It can only be attached to the tail.
     The last_idx acts as both the counter(index + 1) and new item index.
@@ -557,16 +562,6 @@ static int ParamListAppend_(
     *outcome->list_ptr = list;
 
     return 0;
-}
-
-/*
-    Clean up the struct ArgpxOutParamList.
- */
-void ArgpxParamListFree(const int count, char **list)
-{
-    for (int i = 0; i < count; i++)
-        free(list[i]);
-    free(list);
 }
 
 /*
@@ -628,6 +623,16 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
     }
 
     return 0;
+}
+
+/*
+    Clean up the struct ArgpxOutParamList.
+ */
+void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1])
+{
+    for (int i = 0; i < *out->count_ptr; i++)
+        free((*out->list_ptr)[i]);
+    free(*out->list_ptr);
 }
 
 /*

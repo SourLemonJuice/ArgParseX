@@ -216,7 +216,8 @@ int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag ne
 void ArgpxFlagFree(struct ArgpxFlagSet set[static 1]);
 
 void ArgpxResultFree(struct ArgpxResult res[static 1]);
-void ArgpxParamListFree(int count, char **list);
+void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1]);
+void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1]);
 
 struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
     struct ArgpxTerminateMethod *terminate);

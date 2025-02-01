@@ -29,6 +29,8 @@ static void CbWin2_(void *action_load, void *param_in)
 {
     struct ArgpxOutParamSingle *out = action_load;
     printf("%s\n", *(char **)out->var_ptr);
+
+    ArgpxOutParamSingleFree(out);
 }
 
 static void CbParamList_(void *action_load, void *param_in)
@@ -39,7 +41,7 @@ static void CbParamList_(void *action_load, void *param_in)
         printf("idx: %d, str: %s\n", i, (*out->list_ptr)[i]);
     }
 
-    ArgpxParamListFree(*out->count_ptr, *out->list_ptr);
+    ArgpxOutParamListFree(out);
 }
 
 int main(int argc, char *argv[])
@@ -56,8 +58,8 @@ int main(int argc, char *argv[])
 
     int test_int = 0;
 
-    int test_param_list_count = 0;
-    char **test_param_list = NULL;
+    // int test_param_list_count = 0;
+    // char **test_param_list = NULL;
 
     // clang-format off
 
@@ -119,10 +121,9 @@ int main(int argc, char *argv[])
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "paramlist",
-        .action_type = kArgpxActionParamList,
-        .action_load.param_list = {.count_ptr = &test_param_list_count, .list_ptr = &test_param_list, .max = 3},
+        .action_type = kArgpxActionParamListOnDemand,
+        .action_load.param_list = {.max = 3},
         .callback = CbParamList_,
-        .callback_param = NULL,
     });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
