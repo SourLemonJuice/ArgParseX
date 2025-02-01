@@ -31,13 +31,11 @@ enum ArgpxActionType {
     kArgpxActionCallbackOnly = 0,
     // get a single flag parameter, but can still convert it's data type
     kArgpxActionParamSingle,
-    // same as ParamSingle, but allocate output memory with itself
+    // same as ParamSingle, but allocation output memory with itself
     kArgpxActionParamSingleOnDemand,
     // get flag parameters raw string array, the array size is dynamic
-    // the caller need to manually free up them with ArgpxFreeFlagParamList()!!!
+    // it will allocation output memory with itself
     kArgpxActionParamList,
-    // same as ParamList, but alloc output memory with itself
-    kArgpxActionParamListOnDemand,
     // if need some custom structure or the other data type
     kArgpxActionSetMemory,
     // the most common operation on the command line
@@ -47,13 +45,13 @@ enum ArgpxActionType {
     kArgpxActionSetInt,
 };
 
-#define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 0b1 << 0
+#define ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER 1 << 0
 // independent flag won't use trailing mode
-#define ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING 0b1 << 1
-#define ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG 0b1 << 2
+#define ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING 1 << 1
+#define ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG 1 << 2
 
-#define ARGPX_ATTR_COMPOSABLE 0b1 << 3
-#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 0b1 << 4
+#define ARGPX_ATTR_COMPOSABLE 1 << 3
+#define ARGPX_ATTR_COMPOSABLE_NEED_PREFIX 1 << 4
 
 struct ArgpxGroup {
     // all group attribute
@@ -118,8 +116,8 @@ struct ArgpxOutParamSingle {
 };
 
 struct ArgpxOutParamList {
-    int *count_ptr;
-    char ***list_ptr; // pointer to a pointer list to a string list...
+    int out_count;
+    char **out_list;
     // if <= 0, no limit
     int max;
 };

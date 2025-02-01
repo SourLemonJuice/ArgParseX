@@ -495,8 +495,8 @@ static size_t TypeToSize_(const enum ArgpxVarType type)
 
     return negative: error and set status
  */
-static int ActionParamSingle_(
-    struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], bool ondemand, char *param_start, int param_len)
+static int ActionParamSingle_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], bool ondemand,
+    char *param_start, int param_len)
 {
     struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
     if (ondemand == true)
@@ -540,14 +540,12 @@ void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1])
     return negative: error(memory error)
  */
 static int ParamListAppend_(
-    const struct ArgpxOutParamList outcome[static 1], const int last_idx, const char *str, const size_t str_len)
+    struct ArgpxOutParamList out[static 1], const int last_idx, const char *str, const size_t str_len)
 {
-    *outcome->count_ptr = last_idx + 1;
+    out->out_count = last_idx + 1;
 
-    char **list = *outcome->list_ptr;
-
-    list = ArrGrowOneSlot_(list, sizeof(char *), *outcome->count_ptr, 3);
-    if (list == NULL)
+    out->out_list = ArrGrowOneSlot_(out->out_list, sizeof(char *), out->out_count, 3);
+    if (out->out_list == NULL)
         return -1;
 
     char *new_str = malloc(sizeof(char) * str_len + 1);
@@ -557,9 +555,7 @@ static int ParamListAppend_(
     memcpy(new_str, str, str_len);
     new_str[str_len] = '\0';
 
-    list[last_idx] = new_str;
-
-    *outcome->list_ptr = list;
+    out->out_list[last_idx] = new_str;
 
     return 0;
 }
@@ -570,17 +566,9 @@ static int ParamListAppend_(
     return negative: error and set status
  */
 static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf[static 1], bool ondemand, char *param_start_ptr, size_t max_param_len)
+    struct ArgpxFlag conf[static 1], char *param_start_ptr, size_t max_param_len)
 {
     struct ArgpxOutParamList *out = &conf->action_load.param_list;
-    if (ondemand == true) {
-        out->count_ptr = malloc(sizeof(int));
-        out->list_ptr = malloc(sizeof(char **));
-        if (out->count_ptr == NULL or out->list_ptr == NULL) {
-            data->res->status = kArgpxStatusMemoryError;
-            return -1;
-        }
-    }
 
     char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
     if (param_now == NULL) {
@@ -630,9 +618,9 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
  */
 void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1])
 {
-    for (int i = 0; i < *out->count_ptr; i++)
-        free((*out->list_ptr)[i]);
-    free(*out->list_ptr);
+    for (int i = 0; i < out->out_count; i++)
+        free(out->out_list[i]);
+    free(out->out_list);
 }
 
 /*
@@ -727,7 +715,6 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], const s
     case kArgpxActionParamSingle:
     case kArgpxActionParamSingleOnDemand:
     case kArgpxActionParamList:
-    case kArgpxActionParamListOnDemand:
         return true;
     }
 
@@ -916,11 +903,7 @@ static int ParseArgumentIndependent_(
             return -1;
         break;
     case kArgpxActionParamList:
-        if (ActionParamList_(data, grp, conf, false, param_base, 0) < 0)
-            return -1;
-        break;
-    case kArgpxActionParamListOnDemand:
-        if (ActionParamList_(data, grp, conf, true, param_base, 0) < 0)
+        if (ActionParamList_(data, grp, conf, param_base, 0) < 0)
             return -1;
         break;
     case kArgpxActionSetMemory:
@@ -1027,11 +1010,7 @@ static int ParseArgumentComposable_(
                 return -1;
             break;
         case kArgpxActionParamList:
-            if (ActionParamList_(data, grp, conf, false, param_start, param_len) < 0)
-                return -1;
-            break;
-        case kArgpxActionParamListOnDemand:
-            if (ActionParamList_(data, grp, conf, true, param_start, param_len) < 0)
+            if (ActionParamList_(data, grp, conf, param_start, param_len) < 0)
                 return -1;
             break;
         case kArgpxActionSetMemory:

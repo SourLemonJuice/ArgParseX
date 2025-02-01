@@ -25,10 +25,18 @@ static char *BoolToString_(bool input)
         return "false";
 }
 
+static void CbWin1_(void *action_load, void *param_in)
+{
+    struct ArgpxOutParamSingle *out = action_load;
+    printf("callback /win1: %s\n", *(char **)out->var_ptr);
+
+    ArgpxOutParamSingleFree(out);
+}
+
 static void CbWin2_(void *action_load, void *param_in)
 {
     struct ArgpxOutParamSingle *out = action_load;
-    printf("%s\n", *(char **)out->var_ptr);
+    printf("callback /win2: %s\n", *(char **)out->var_ptr);
 
     ArgpxOutParamSingleFree(out);
 }
@@ -37,8 +45,8 @@ static void CbParamList_(void *action_load, void *param_in)
 {
     struct ArgpxOutParamList *out = action_load;
 
-    for (int i = 0; i < *out->count_ptr; i++) {
-        printf("idx: %d, str: %s\n", i, (*out->list_ptr)[i]);
+    for (int i = 0; i < out->out_count; i++) {
+        printf("callback --paramlist: idx: %d, str: %s\n", i, out->out_list[i]);
     }
 
     ArgpxOutParamListFree(out);
@@ -51,15 +59,12 @@ int main(int argc, char *argv[])
     // char *test_str21 = NULL;
     // char *test_str22 = NULL;
     char *test_str31 = NULL;
-    char *test_win_str1 = NULL;
-    char *test_win_str2 = NULL;
+    // char *test_win_str1 = NULL;
+    // char *test_win_str2 = NULL;
     bool test_bool = false;
     bool test_bool2 = false;
 
     int test_int = 0;
-
-    // int test_param_list_count = 0;
-    // char **test_param_list = NULL;
 
     // clang-format off
 
@@ -121,15 +126,16 @@ int main(int argc, char *argv[])
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 0,
         .name = "paramlist",
-        .action_type = kArgpxActionParamListOnDemand,
+        .action_type = kArgpxActionParamList,
         .action_load.param_list = {.max = 3},
         .callback = CbParamList_,
     });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
         .name = "win1",
-        .action_type = kArgpxActionParamSingle,
-        .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_win_str1},
+        .action_type = kArgpxActionParamSingleOnDemand,
+        .action_load.param_single = {.type = kArgpxVarString},
+        .callback = CbWin1_,
     });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
@@ -164,7 +170,7 @@ int main(int argc, char *argv[])
     // printf("test_str group 1:\t%s, %s\n", test_str1, test_str2);
     // printf("test_str group 2:\t%s, %s\n", test_str21, test_str22);
     printf("test_str group 3:\t%s\n", test_str31);
-    printf("/win1 and /win2:\t%s, %s\n", test_win_str1, test_win_str2);
+    // printf("/win1 and /win2:\t%s, %s\n", test_win_str1, test_win_str2);
     printf("--setbool:\t\t%s\n", BoolToString_(test_bool));
     printf("-a:\t\t\t%s\n", BoolToString_(test_bool2));
     printf("--setint:\t\t%d\n", test_int);
