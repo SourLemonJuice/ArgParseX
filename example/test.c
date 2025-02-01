@@ -25,6 +25,12 @@ static char *BoolToString_(bool input)
         return "false";
 }
 
+static void CbWin2_(void *action_load, void *param_in)
+{
+    struct ArgpxOutParamSingle *out = action_load;
+    printf("%s\n", *(char **)out->var_ptr);
+}
+
 static void CbParamList_(void *action_load, void *param_in)
 {
     struct ArgpxOutParamList *out = action_load;
@@ -127,8 +133,9 @@ int main(int argc, char *argv[])
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 3,
         .name = "win2",
-        .action_type = kArgpxActionParamSingle,
-        .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_win_str2},
+        .action_type = kArgpxActionParamSingleOnDemand,
+        .action_load.param_single = {.type = kArgpxVarString},
+        .callback = CbWin2_,
     });
     ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
         .group_idx = 2,

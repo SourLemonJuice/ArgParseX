@@ -31,11 +31,15 @@ enum ArgpxActionType {
     kArgpxActionCallbackOnly = 0,
     // get a single flag parameter, but can still convert it's data type
     kArgpxActionParamSingle,
+    // same as ParamSingle, but allocate output memory with itself
+    kArgpxActionParamSingleOnDemand,
     // get multiple flag parameters with different data type
     kArgpxActionParamMulti,
     // get flag parameters raw string array, the array size is dynamic
     // the caller need to manually free up them with ArgpxFreeFlagParamList()!!!
     kArgpxActionParamList,
+    // same as ParamList, but alloc output memory with itself
+    kArgpxActionParamListOnDemand,
     // if need some custom structure or the other data type
     kArgpxActionSetMemory,
     // the most common operation on the command line
