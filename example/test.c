@@ -157,15 +157,13 @@ int main(int argc, char *argv[])
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_str31},
     });
 
+    struct ArgpxResult res;
     // skip the first arg, that's the exec command name
-    struct ArgpxResult *res = ArgpxParse(argc - 1, argv + 1, &style, &flag, NULL);
+    if (ArgpxParse(&res, argc - 1, argv + 1, &style, &flag, NULL) != kArgpxStatusSuccess) {
+        Error_(&res);
+    }
 
     // clang-format on
-
-    if (res == NULL)
-        Error_(NULL);
-    if (res->status != kArgpxStatusSuccess)
-        Error_(res);
 
     // printf("test_str group 1:\t%s, %s\n", test_str1, test_str2);
     // printf("test_str group 2:\t%s, %s\n", test_str21, test_str22);
@@ -176,10 +174,10 @@ int main(int argc, char *argv[])
     printf("--setint:\t\t%d\n", test_int);
 
     printf("==== command parameters ====\n");
-    for (int i = 0; i < res->param_c; i++)
-        printf("%s\n", res->param_v[i]);
+    for (int i = 0; i < res.param_c; i++)
+        printf("%s\n", res.param_v[i]);
 
-    ArgpxResultFree(res);
+    ArgpxResultFree(&res);
     ArgpxStyleFree(&style);
     ArgpxFlagFree(&flag);
 

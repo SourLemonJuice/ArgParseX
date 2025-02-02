@@ -1,5 +1,6 @@
 #include "argpx/argpx.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <iso646.h>
 #include <stdbool.h>
@@ -239,7 +240,6 @@ void ArgpxFlagFree(struct ArgpxFlagSet set[static 1])
 void ArgpxResultFree(struct ArgpxResult res[static 1])
 {
     free(res->param_v);
-    free(res);
 }
 
 #ifdef ARGPX_USE_HASH
@@ -1045,36 +1045,41 @@ static int ParseArgumentComposable_(
 }
 
 /*
-    The result struct ArgpxResult needs to be freed up manually.
+    The caller needs to prepare the memory of struct ArgpxResult.
 
     If the terminate param is NULL, that's same as {.method = kArgpxTerminateNone} of struct ArgpxTerminateMethod.
 
-    return NULL: result structure can't allocated.
+    return the result.status enum(ArgpxStatus) code.
+    Only 0(kArgpxStatusSuccess) is success.
  */
-struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
-    struct ArgpxTerminateMethod *terminate)
+int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, struct ArgpxStyle *in_style,
+    struct ArgpxFlagSet *in_flag, struct ArgpxTerminateMethod *in_terminate)
 {
+    assert(in_result != NULL);
+    assert(in_arg_c > 0);
+    assert(in_arg_v != NULL);
+    assert(in_style != NULL);
+    assert(in_flag != NULL);
+
     struct UnifiedData_ data = {
-        .arg_c = arg_c,
-        .arg_v = arg_v,
+        .res = in_result,
+        .arg_c = in_arg_c,
+        .arg_v = in_arg_v,
         .arg_idx = 0,
-        .style = *style,
-        .conf = *flag,
+        .style = *in_style,
+        .conf = *in_flag,
     };
 
-    data.res = malloc(sizeof(struct ArgpxResult));
-    if (data.res == NULL)
-        return NULL;
     *data.res = (struct ArgpxResult){
         .status = kArgpxStatusSuccess,
         .param_c = 0,
         .param_v = NULL,
     };
 
-    if (terminate == NULL)
+    if (in_terminate == NULL)
         data.terminate = (struct ArgpxTerminateMethod){.method = kArgpxTerminateNone};
     else
-        data.terminate = *terminate;
+        data.terminate = *in_terminate;
 
 #ifdef ARGPX_USE_HASH
     if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
@@ -1141,5 +1146,5 @@ out:
 #ifdef ARGPX_USE_HASH
     FlagTableFree_(&data.conf_table);
 #endif
-    return data.res;
+    return data.res->status;
 }

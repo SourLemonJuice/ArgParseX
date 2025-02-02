@@ -217,8 +217,8 @@ void ArgpxResultFree(struct ArgpxResult res[static 1]);
 void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1]);
 void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1]);
 
-struct ArgpxResult *ArgpxParse(int arg_c, char **arg_v, struct ArgpxStyle *style, struct ArgpxFlagSet *flag,
-    struct ArgpxTerminateMethod *terminate);
+int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, struct ArgpxStyle *in_style,
+    struct ArgpxFlagSet *in_flag, struct ArgpxTerminateMethod *in_terminate);
 
 /*
     Shortcuts
