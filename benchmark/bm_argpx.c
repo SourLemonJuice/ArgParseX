@@ -71,15 +71,13 @@ int main(void)
     // clang-format on
 
     for (int i = 0; i < 10 * 1000 * 1000; i++) {
-        struct ArgpxResult *res = ArgpxParse(bm_argc, bm_argv, &style, &flag, NULL);
-        if (res == NULL)
-            exit(EXIT_FAILURE);
-        if (res->status != kArgpxStatusSuccess) {
-            printf("ArgParseX error: %s\n", ArgpxStatusString(res->status));
-            printf("on '%s'\n", res->current_argv_ptr);
+        struct ArgpxResult res;
+        if (ArgpxParse(&res, bm_argc, bm_argv, &style, &flag, NULL) != kArgpxStatusSuccess) {
+            printf("ArgParseX error: %s\n", ArgpxStatusString(res.status));
+            printf("on '%s'\n", res.current_argv_ptr);
             exit(EXIT_FAILURE);
         }
-        ArgpxResultFree(res);
+        ArgpxResultFree(&res);
 
         free(ans.f_config);
         free(ans.f_param_of_c);

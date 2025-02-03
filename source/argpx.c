@@ -66,6 +66,9 @@ struct UnifiedGroupCache_ {
  */
 static char *strnstr_(const void *haystack_in, const void *needle_in, size_t haystack_len)
 {
+    assert(haystack_in != NULL);
+    assert(needle_in != NULL);
+
     // return memmem(haystack, len, needle, strlen(needle));
     // from GNU libc
     // this won't make benchmark faster, the haystack is too short, not even now
@@ -73,8 +76,6 @@ static char *strnstr_(const void *haystack_in, const void *needle_in, size_t hay
     const char *haystack = haystack_in;
     const char *needle = needle_in;
 
-    if (haystack == NULL or needle == NULL)
-        return NULL;
     if (needle[0] == '\0')
         return (char *)haystack;
     if (haystack_len == 0)
@@ -102,11 +103,11 @@ static char *strnstr_(const void *haystack_in, const void *needle_in, size_t hay
  */
 static void *ArrGrowOneSlot_(void *base, size_t unit_size, unsigned int current_c, unsigned int batch)
 {
-    if (unit_size == 0 or batch == 0)
-        return NULL;
+    assert(unit_size > 0);
+    assert(batch > 0);
 
 #ifdef ARGPX_USE_BATCH_ALLOC
-    if (base == NULL or current_c == 0) {
+    if (base == NULL) {
         base = malloc(unit_size * batch);
     } else if (current_c % batch == 0) {
         // is full
@@ -166,10 +167,10 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
 
     return negative: error
  */
-int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1])
+int ArgpxGroupAppend(struct ArgpxStyle *style, const struct ArgpxGroup *new)
 {
-    if (style == NULL or new == NULL)
-        return -1;
+    assert(style != NULL);
+    assert(new != NULL);
 
     style->group_v = ArrGrowOneSlot_(style->group_v, sizeof(struct ArgpxGroup), style->group_c, 3);
     if (style->group_v == NULL)
@@ -188,10 +189,10 @@ int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup 
 
     Return negative: error
  */
-int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1])
+int ArgpxSymbolAppend(struct ArgpxStyle *style, const struct ArgpxSymbol *new)
 {
-    if (style == NULL or new == NULL)
-        return -1;
+    assert(style != NULL);
+    assert(new != NULL);
 
     style->symbol_v = ArrGrowOneSlot_(style->symbol_v, sizeof(struct ArgpxSymbol), style->symbol_c, 3);
     if (style->symbol_v == NULL)
@@ -204,8 +205,10 @@ int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbo
     return new_idx;
 }
 
-void ArgpxStyleFree(struct ArgpxStyle style[static 1])
+void ArgpxStyleFree(struct ArgpxStyle *style)
 {
+    assert(style != NULL);
+
     free(style->group_v);
     free(style->symbol_v);
 }
@@ -216,10 +219,10 @@ void ArgpxStyleFree(struct ArgpxStyle style[static 1])
 
     Return negative: error
  */
-int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1])
+int ArgpxFlagAppend(struct ArgpxFlagSet *set, const struct ArgpxFlag *new)
 {
-    if (set == NULL or new == NULL)
-        return -1;
+    assert(set != NULL);
+    assert(new != NULL);
 
     set->ptr = ArrGrowOneSlot_(set->ptr, sizeof(struct ArgpxFlag), set->count, 16);
     if (set->ptr == NULL)
@@ -232,13 +235,17 @@ int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag ne
     return new_idx;
 }
 
-void ArgpxFlagFree(struct ArgpxFlagSet set[static 1])
+void ArgpxFlagFree(struct ArgpxFlagSet *set)
 {
+    assert(set != NULL);
+
     free(set->ptr);
 }
 
-void ArgpxResultFree(struct ArgpxResult res[static 1])
+void ArgpxResultFree(struct ArgpxResult *res)
 {
+    assert(res != NULL);
+
     free(res->param_v);
 }
 
@@ -248,8 +255,12 @@ void ArgpxResultFree(struct ArgpxResult res[static 1])
     Return the pointer of table self.
     return NULL: error
  */
-static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ table[static 1], int group_count, int flag_count)
+static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ *table, int group_count, int flag_count)
 {
+    assert(table != NULL);
+    assert(group_count > 0);
+    assert(flag_count > 0);
+
     table->row_c = group_count;
     table->col_c = flag_count / ARGPX_FLAG_TABLE_LOADFACTOR;
     table->array = malloc(sizeof(struct FlagTableUnit_) * table->row_c * table->col_c);
@@ -262,8 +273,10 @@ static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ table[static 1], int
 /*
     return NULL: error
  */
-static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ unit[static 1])
+static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ *unit)
 {
+    assert(unit != NULL);
+
     while (unit->used == true) {
         if (unit->next == NULL) {
             unit->next = malloc(sizeof(struct FlagTableUnit_));
@@ -283,8 +296,12 @@ static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ unit[sta
     return NULL: error
  */
 static struct FlagTable_ *FlagTableMake_(
-    struct ArgpxStyle style[static 1], struct ArgpxFlagSet flagset[static 1], struct FlagTable_ table[static 1])
+    struct ArgpxStyle *style, struct ArgpxFlagSet *flagset, struct FlagTable_ *table)
 {
+    assert(style != NULL);
+    assert(flagset != NULL);
+    assert(table != NULL);
+
     table = FlagTableAlloc_(table, style->group_c, flagset->count);
     if (table == NULL) {
         return NULL;
@@ -319,8 +336,10 @@ static struct FlagTable_ *FlagTableMake_(
     Note: it won't free up the parameter "unit", that's managed by table.array.
     Note: this function won't check .used element of root unit.
  */
-static void FlagTableFreeRecursiveUnit_(struct FlagTableUnit_ unit[static 1])
+static void FlagTableFreeRecursiveUnit_(struct FlagTableUnit_ *unit)
 {
+    assert(unit != NULL);
+
     if (unit->next == NULL)
         return;
 
@@ -332,8 +351,10 @@ static void FlagTableFreeRecursiveUnit_(struct FlagTableUnit_ unit[static 1])
     } while (unit != NULL);
 }
 
-static void FlagTableFree_(struct FlagTable_ table[static 1])
+static void FlagTableFree_(struct FlagTable_ *table)
 {
+    assert(table != NULL);
+
     for (int i = 0; i < table->row_c * table->col_c; i++) {
         struct FlagTableUnit_ *unit = &table->array[i];
         if (unit->used == false)
@@ -351,8 +372,11 @@ static void FlagTableFree_(struct FlagTable_ table[static 1])
 
     return NULL: error
  */
-static char *ShiftArguments_(struct UnifiedData_ data[static 1], const int offset)
+static char *ShiftArguments_(struct UnifiedData_ *data, const int offset)
 {
+    assert(data != NULL);
+    assert(offset > 0);
+
     if (data->arg_idx + offset >= data->arg_c)
         return NULL;
     data->arg_idx += offset;
@@ -368,8 +392,10 @@ static char *ShiftArguments_(struct UnifiedData_ data[static 1], const int offse
         -1: error, status is set
         -2: need terminate processing as required by MainOption
  */
-static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str)
+static int AppendCommandParameter_(struct UnifiedData_ *data, char *str)
 {
+    assert(data != NULL);
+    assert(str != NULL);
     struct ArgpxResult *res = data->res;
 
     if (res->param_c == 0) {
@@ -403,6 +429,7 @@ static int AppendCommandParameter_(struct UnifiedData_ data[static 1], char *str
  */
 static int StringIsBool_(const char *string, const size_t length)
 {
+    assert(string != NULL);
     if (length <= 0)
         return -1;
 
@@ -435,9 +462,16 @@ static int StringIsBool_(const char *string, const size_t length)
     And assign it to a pointer.
 
     The "max_len" is similar to strncmp()'s "n"
+
+    return negative: error
  */
-static void StringToType_(const char *source_str, const int max_len, const enum ArgpxVarType type, void *ptr)
+static int StringToType_(const char *source_str, const int max_len, const enum ArgpxVarType type, void *ptr)
 {
+    assert(source_str != NULL);
+    assert(ptr != NULL);
+    if (max_len > 0)
+        return -1;
+
     // prepare a separate string
     size_t str_size = strlen(source_str);
     // chose the smallest one
@@ -455,7 +489,7 @@ static void StringToType_(const char *source_str, const int max_len, const enum 
     switch (type) {
     case kArgpxVarString:
         *(char **)ptr = value_str;
-        return; // dont't free up
+        return 0; // dont't free up
     case kArgpxVarInt:
         *(int *)ptr = strtoimax(value_str, NULL, 0);
         break;
@@ -471,6 +505,7 @@ static void StringToType_(const char *source_str, const int max_len, const enum 
     }
 
     free(value_str);
+    return 0;
 }
 
 static size_t TypeToSize_(const enum ArgpxVarType type)
@@ -495,9 +530,15 @@ static size_t TypeToSize_(const enum ArgpxVarType type)
 
     return negative: error and set status
  */
-static int ActionParamSingle_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf[static 1], bool ondemand,
-    char *param_start, int param_len)
+static int ActionParamSingle_(
+    struct UnifiedData_ *data, struct ArgpxFlag *conf, bool ondemand, char *param_start, int param_len)
 {
+    assert(data != NULL);
+    assert(conf != NULL);
+    assert(param_start != NULL);
+    if (param_len < 0)
+        return -1;
+
     struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
     if (ondemand == true)
         unit->var_ptr = malloc(TypeToSize_(unit->type));
@@ -521,13 +562,16 @@ static int ActionParamSingle_(struct UnifiedData_ data[static 1], struct ArgpxFl
         return -1;
     }
 
-    StringToType_(param_start, param_len, unit->type, unit->var_ptr);
+    if (StringToType_(param_start, param_len, unit->type, unit->var_ptr) < 0)
+        return -1;
 
     return 0;
 }
 
-void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1])
+void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle *out)
 {
+    assert(out != NULL);
+
     free(out->var_ptr);
 }
 
@@ -539,9 +583,14 @@ void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1])
 
     return negative: error(memory error)
  */
-static int ParamListAppend_(
-    struct ArgpxOutParamList out[static 1], const int last_idx, const char *str, const size_t str_len)
+static int ParamListAppend_(struct ArgpxOutParamList *out, const int last_idx, const char *str, const size_t str_len)
 {
+    assert(out != NULL);
+    assert(last_idx >= 0);
+    assert(str != NULL);
+    if (str_len <= 0)
+        return -1;
+
     out->out_count = last_idx + 1;
 
     out->out_list = ArrGrowOneSlot_(out->out_list, sizeof(char *), out->out_count, 3);
@@ -565,9 +614,13 @@ static int ParamListAppend_(
 
     return negative: error and set status
  */
-static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    struct ArgpxFlag conf[static 1], char *param_start_ptr, size_t max_param_len)
+static int ActionParamList_(struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, struct ArgpxFlag *conf,
+    char *param_start_ptr, size_t max_param_len)
 {
+    assert(data != NULL);
+    assert(grp != NULL);
+    assert(conf != NULL);
+    assert(param_start_ptr != NULL);
     struct ArgpxOutParamList *out = &conf->action_load.param_list;
 
     char *param_now = param_start_ptr != NULL ? param_start_ptr : ShiftArguments_(data, 1);
@@ -616,8 +669,10 @@ static int ActionParamList_(struct UnifiedData_ data[static 1], struct UnifiedGr
 /*
     Clean up the struct ArgpxOutParamList.
  */
-void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1])
+void ArgpxOutParamListFree(struct ArgpxOutParamList *out)
 {
+    assert(out != NULL);
+
     for (int i = 0; i < out->out_count; i++)
         free(out->out_list[i]);
     free(out->out_list);
@@ -626,8 +681,11 @@ void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1])
 /*
     kArgpxActionSetMemory
  */
-static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetMemory_(struct UnifiedData_ *data, struct ArgpxFlag *conf_ptr)
 {
+    assert(data != NULL);
+    assert(conf_ptr != NULL);
+
     struct ArgpxOutSetMemory *ptr = &conf_ptr->action_load.set_memory;
     memcpy(ptr->target_ptr, ptr->source_ptr, ptr->size);
 }
@@ -635,8 +693,11 @@ static void ActionSetMemory_(struct UnifiedData_ data[static 1], struct ArgpxFla
 /*
     kArgpxActionSetBool
  */
-static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetBool_(struct UnifiedData_ *data, struct ArgpxFlag *conf_ptr)
 {
+    assert(data != NULL);
+    assert(conf_ptr != NULL);
+
     struct ArgpxOutSetBool *ptr = &conf_ptr->action_load.set_bool;
     *ptr->target_ptr = ptr->source;
 }
@@ -644,8 +705,11 @@ static void ActionSetBool_(struct UnifiedData_ data[static 1], struct ArgpxFlag 
 /*
     kArgpxActionSetInt
  */
-static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag conf_ptr[static 1])
+static void ActionSetInt_(struct UnifiedData_ *data, struct ArgpxFlag *conf_ptr)
 {
+    assert(data != NULL);
+    assert(conf_ptr != NULL);
+
     struct ArgpxOutSetInt *ptr = &conf_ptr->action_load.set_int;
     *ptr->target_ptr = ptr->source;
 }
@@ -657,8 +721,12 @@ static void ActionSetInt_(struct UnifiedData_ data[static 1], struct ArgpxFlag c
       >= 0: valid index of data.groups[]
       < 0: it's a command parameter, not flag
  */
-static int MatchingGroup_(int group_c, struct ArgpxGroup group_v[static 1], char arg[static 1])
+static int MatchingGroup_(int group_c, struct ArgpxGroup *group_v, char *arg)
 {
+    assert(group_c > 0);
+    assert(group_v != NULL);
+    assert(arg != NULL);
+
     struct ArgpxGroup grp;
     int no_prefix_group_idx = -1;
     for (int g_idx = 0; g_idx < group_c; g_idx++) {
@@ -680,8 +748,10 @@ static int MatchingGroup_(int group_c, struct ArgpxGroup group_v[static 1], char
 /*
     return negative: error
  */
-static int GroupCacheInit_(struct UnifiedGroupCache_ grp[static 1])
+static int GroupCacheInit_(struct UnifiedGroupCache_ *grp)
 {
+    assert(grp != NULL);
+
     grp->prefix_len = strlen(grp->item.prefix);
 
     // empty string checks
@@ -704,8 +774,11 @@ static int GroupCacheInit_(struct UnifiedGroupCache_ grp[static 1])
 /*
     Should the assigner of this flag config is mandatory?
  */
-static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], const struct ArgpxFlag conf_ptr[static 1])
+static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ *data, const struct ArgpxFlag *conf_ptr)
 {
+    assert(data != NULL);
+    assert(conf_ptr != NULL);
+
     switch (conf_ptr->action_type) {
     case kArgpxActionSetMemory:
     case kArgpxActionSetBool:
@@ -738,9 +811,13 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ data[static 1], const s
 
     return NULL: error and set status
  */
-static struct ArgpxFlag *MatchConfLinear_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    char name_start[static 1], size_t max_name_len, bool shortest)
+static struct ArgpxFlag *MatchConfLinear_(
+    struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *name_start, size_t max_name_len, bool shortest)
 {
+    assert(data != NULL);
+    assert(grp != NULL);
+    assert(name_start != NULL);
+
     bool tail_limit = max_name_len <= 0 ? false : true;
     // we may need to find the longest match
     struct ArgpxFlag *longest_conf = NULL;
@@ -784,11 +861,17 @@ static struct ArgpxFlag *MatchConfLinear_(struct UnifiedData_ data[static 1], st
 }
 
 /*
+    TODO to respect ARGPX_USE_HASH
+
     return NULL: error and set status
  */
 static struct ArgpxFlag *MatchConfHash_(
-    struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char name[static 1], size_t name_len)
+    struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *name, size_t name_len)
 {
+    assert(data != NULL);
+    assert(grp != NULL);
+    assert(name != NULL);
+
     if (name_len == 0) {
         data->res->status = kArgpxStatusFailure;
         return NULL;
@@ -821,9 +904,13 @@ static struct ArgpxFlag *MatchConfHash_(
 
     TODO don't be ugly
  */
-static struct ArgpxFlag *MatchConf_(struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1],
-    char name_start[static 1], size_t max_name_len, bool shortest)
+static struct ArgpxFlag *MatchConf_(
+    struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *name_start, size_t max_name_len, bool shortest)
 {
+    assert(data != NULL);
+    assert(grp != NULL);
+    assert(name_start != NULL);
+
 #ifndef ARGPX_USE_HASH
     return MatchConfLinear_(data, grp, name_start, max_name_len, shortest);
 #endif
@@ -841,6 +928,10 @@ static struct ArgpxFlag *MatchConf_(struct UnifiedData_ data[static 1], struct U
  */
 static int MatchSymbol_(const char *target, const int sym_c, const struct ArgpxSymbol *sym_v)
 {
+    assert(target != NULL);
+    assert(sym_c > 0);
+    assert(sym_v != NULL);
+
     for (int i = 0; i < sym_c; i++) {
         if (strcmp(target, sym_v[i].str) == 0)
             return i;
@@ -855,9 +946,12 @@ static int MatchSymbol_(const char *target, const int sym_c, const struct ArgpxS
 
     return negative: error and set status
  */
-static int ParseArgumentIndependent_(
-    struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
+static int ParseArgumentIndependent_(struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *arg)
 {
+    assert(data != NULL);
+    assert(grp != NULL);
+    assert(arg != NULL);
+
     char *name_start = arg + grp->prefix_len;
 
     char *assigner_ptr;
@@ -928,9 +1022,12 @@ static int ParseArgumentIndependent_(
 /*
     return negative: error and errno is set
  */
-static int ParseArgumentComposable_(
-    struct UnifiedData_ data[static 1], struct UnifiedGroupCache_ grp[static 1], char *arg)
+static int ParseArgumentComposable_(struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *arg)
 {
+    assert(data != NULL);
+    assert(grp != NULL);
+    assert(arg != NULL);
+
     // believe that the prefix exists
     char *base_ptr = arg + grp->prefix_len;
     size_t remaining_len = strlen(arg) - grp->prefix_len;
@@ -1084,7 +1181,7 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
 #ifdef ARGPX_USE_HASH
     if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
         data.res->status = kArgpxStatusMemoryError;
-        return data.res;
+        return data.res->status;
     }
 #endif
 

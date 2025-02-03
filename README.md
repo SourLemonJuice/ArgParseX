@@ -73,6 +73,8 @@ And `-Wvla`(no Variable-length array).
 Code style follows [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html), and clang-format config.\
 The "namespace" of identifiers is `argpx_xxx`.The base pointer of the array is named `xxx_v`, its counter named `xxx_c`.
 
+For non-user input(like string length), it use `assert()` std macro to check function parameters' validity.
+
 ## Hash table mode
 
 When building `source/argpx.c`, add define `ARGPX_USE_HASH` and link the `source/argpx_hash.c` unit to enable hash table mode for flag search.\

@@ -206,16 +206,16 @@ struct ArgpxResult {
 
 char *ArgpxStatusString(enum ArgpxStatus status);
 
-int ArgpxGroupAppend(struct ArgpxStyle style[static 1], const struct ArgpxGroup new[static 1]);
-int ArgpxSymbolAppend(struct ArgpxStyle style[static 1], const struct ArgpxSymbol new[static 1]);
-void ArgpxStyleFree(struct ArgpxStyle style[static 1]);
+int ArgpxGroupAppend(struct ArgpxStyle *style, const struct ArgpxGroup *new);
+int ArgpxSymbolAppend(struct ArgpxStyle *style, const struct ArgpxSymbol *new);
+void ArgpxStyleFree(struct ArgpxStyle *style);
 
-int ArgpxFlagAppend(struct ArgpxFlagSet set[static 1], const struct ArgpxFlag new[static 1]);
-void ArgpxFlagFree(struct ArgpxFlagSet set[static 1]);
+int ArgpxFlagAppend(struct ArgpxFlagSet *set, const struct ArgpxFlag *new);
+void ArgpxFlagFree(struct ArgpxFlagSet *set);
 
-void ArgpxResultFree(struct ArgpxResult res[static 1]);
-void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle out[static 1]);
-void ArgpxOutParamListFree(struct ArgpxOutParamList out[static 1]);
+void ArgpxResultFree(struct ArgpxResult *res);
+void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle *out);
+void ArgpxOutParamListFree(struct ArgpxOutParamList *out);
 
 int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, struct ArgpxStyle *in_style,
     struct ArgpxFlagSet *in_flag, struct ArgpxTerminateMethod *in_terminate);
