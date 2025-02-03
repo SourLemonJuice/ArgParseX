@@ -52,6 +52,16 @@ static void CbParamList_(void *action_load, void *param_in)
     ArgpxOutParamListFree(out);
 }
 
+static void CbSameNameGnu_(void *load, void *param)
+{
+    puts("callback --samename");
+}
+
+static void CbSameName1_(void *load, void *param)
+{
+    puts("callback ++samename");
+}
+
 int main(int argc, char *argv[])
 {
     // char *test_str1 = NULL;
@@ -59,8 +69,6 @@ int main(int argc, char *argv[])
     // char *test_str21 = NULL;
     // char *test_str22 = NULL;
     char *test_str31 = NULL;
-    // char *test_win_str1 = NULL;
-    // char *test_win_str2 = NULL;
     bool test_bool = false;
     bool test_bool2 = false;
 
@@ -156,6 +164,20 @@ int main(int argc, char *argv[])
         .action_type = kArgpxActionParamSingle,
         .action_load.param_single = {.type = kArgpxVarString, .var_ptr = &test_str31},
     });
+    // --samename
+    ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
+        .group_idx = 0,
+        .name = "samename",
+        .action_type = kArgpxActionCallbackOnly,
+        .callback = CbSameNameGnu_,
+    });
+    // ++samename
+    ArgpxFlagAppend(&flag, &(struct ArgpxFlag){
+        .group_idx = 1,
+        .name = "samename",
+        .action_type = kArgpxActionCallbackOnly,
+        .callback = CbSameName1_,
+    });
 
     struct ArgpxResult res;
     // skip the first arg, that's the exec command name
@@ -168,7 +190,6 @@ int main(int argc, char *argv[])
     // printf("test_str group 1:\t%s, %s\n", test_str1, test_str2);
     // printf("test_str group 2:\t%s, %s\n", test_str21, test_str22);
     printf("test_str group 3:\t%s\n", test_str31);
-    // printf("/win1 and /win2:\t%s, %s\n", test_win_str1, test_win_str2);
     printf("--setbool:\t\t%s\n", BoolToString_(test_bool));
     printf("-a:\t\t\t%s\n", BoolToString_(test_bool2));
     printf("--setint:\t\t%d\n", test_int);

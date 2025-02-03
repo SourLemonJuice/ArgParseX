@@ -47,6 +47,7 @@ function separator {
 function AssertSuccess {
     separator - 3
 
+    echo ">>> $*"
     command -- $@
     if [[ $? -ne 0 ]]; then
         echo "[Failure] Assert failed, expected Success(0) -- $@"
@@ -57,6 +58,7 @@ function AssertSuccess {
 function AssertFailure {
     separator - 3
 
+    echo ">>> $*"
     command -- $@
     if [[ $? -eq 0 ]]; then
         separator - 3
@@ -65,16 +67,17 @@ function AssertFailure {
     fi
 }
 
-test_exec='./test.out'
+out='./test.out'
 
-AssertSuccess $test_exec param1 param2 paramEnd
-AssertFailure $test_exec --ffff
-AssertFailure $test_exec -ffff
-AssertSuccess $test_exec --setbool --setint paramEnd
-# AssertSuccess $test_exec --test=testStr1,testStr2
-# AssertSuccess $test_exec ++test2~str1-str2
-AssertSuccess $test_exec -baac -a -- -ba paramEnd
-AssertSuccess $test_exec /win1Param1/win2Param2 paramEnd
+AssertSuccess $out param1 param2 paramEnd
+AssertFailure $out --ffff
+AssertFailure $out -ffff
+AssertSuccess $out --setbool --setint paramEnd
+# AssertSuccess $out --test=testStr1,testStr2
+# AssertSuccess $out ++test2~str1-str2
+AssertSuccess $out -baac -a -- -ba paramEnd
+AssertSuccess $out /win1Param1/win2Param2 paramEnd
+AssertSuccess $out --samename ++samename
 
 separator - 3
 echo "[Success] All test passed(only the return code is detected)"
