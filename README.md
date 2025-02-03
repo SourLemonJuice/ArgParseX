@@ -75,6 +75,8 @@ The "namespace" of identifiers is `argpx_xxx`.The base pointer of the array is n
 
 For non-user input(like string length), it use `assert()` std macro to check function parameters' validity.
 
+Storage string length as `size_t`.
+
 ## Hash table mode
 
 When building `source/argpx.c`, add define `ARGPX_USE_HASH` and link the `source/argpx_hash.c` unit to enable hash table mode for flag search.\

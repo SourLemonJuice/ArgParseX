@@ -14,7 +14,8 @@ include config.mk
 sources := ${source_dir}/argpx.c
 
 ifeq (${debug}, true)
-CFLAGS += -Og -g
+# -Og is still missing something
+CFLAGS += -O0 -g
 else
 CFLAGS += -O3
 endif

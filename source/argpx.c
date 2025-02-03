@@ -417,7 +417,7 @@ static int AppendCommandParameter_(struct UnifiedData_ *data, char *str)
 static int StringIsBool_(const char *string, const size_t length)
 {
     assert(string != NULL);
-    if (length <= 0)
+    if (length == 0)
         return -1;
 
     char *true_list[] = {
@@ -452,11 +452,11 @@ static int StringIsBool_(const char *string, const size_t length)
 
     return negative: error
  */
-static int StringToType_(const char *source_str, const int max_len, const enum ArgpxVarType type, void *ptr)
+static int StringToType_(const char *source_str, const size_t max_len, const enum ArgpxVarType type, void *ptr)
 {
     assert(source_str != NULL);
     assert(ptr != NULL);
-    if (max_len > 0)
+    if (max_len == 0)
         return -1;
 
     // prepare a separate string
@@ -518,13 +518,10 @@ static size_t TypeToSize_(const enum ArgpxVarType type)
     return negative: error and set status
  */
 static int ActionParamSingle_(
-    struct UnifiedData_ *data, struct ArgpxFlag *conf, bool ondemand, char *param_start, int param_len)
+    struct UnifiedData_ *data, struct ArgpxFlag *conf, bool ondemand, char *param_start, size_t param_len)
 {
     assert(data != NULL);
     assert(conf != NULL);
-    assert(param_start != NULL);
-    if (param_len < 0)
-        return -1;
 
     struct ArgpxOutParamSingle *unit = &conf->action_load.param_single;
     if (ondemand == true)
@@ -541,16 +538,18 @@ static int ActionParamSingle_(
         return -1;
     }
 
-    if (param_len <= 0)
+    if (param_len == 0)
         param_len = strlen(param_start);
 
-    if (param_len <= 0) {
+    if (param_len == 0) {
         data->res->status = kArgpxStatusParamInsufficient;
         return -1;
     }
 
-    if (StringToType_(param_start, param_len, unit->type, unit->var_ptr) < 0)
+    if (StringToType_(param_start, param_len, unit->type, unit->var_ptr) < 0) {
+        data->res->status = kArgpxStatusFailure;
         return -1;
+    }
 
     return 0;
 }
@@ -575,7 +574,7 @@ static int ParamListAppend_(struct ArgpxOutParamList *out, const int last_idx, c
     assert(out != NULL);
     assert(last_idx >= 0);
     assert(str != NULL);
-    if (str_len <= 0)
+    if (str_len == 0)
         return -1;
 
     out->out_count = last_idx + 1;
@@ -597,7 +596,7 @@ static int ParamListAppend_(struct ArgpxOutParamList *out, const int last_idx, c
 }
 
 /*
-    If max_param_len <= 0 then no limit.
+    If max_param_len == 0 then no limit.
 
     return negative: error and set status
  */
@@ -792,7 +791,7 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ *data, const struct Arg
 
     And flag may have assignment symbol, I think the caller should already known the names range.
     In this case, it make sense to get a max_name_len.
-    Set max_name_len to <= 0 to disable it.
+    Set max_name_len to == 0 to disable it.
 
     If "shortest" is true, then shortest matching flag name and ignore tail.
 
@@ -805,7 +804,7 @@ static struct ArgpxFlag *MatchConfLinear_(
     assert(grp != NULL);
     assert(name_start != NULL);
 
-    bool tail_limit = max_name_len <= 0 ? false : true;
+    bool tail_limit = max_name_len == 0 ? false : true;
     // we may need to find the longest match
     struct ArgpxFlag *longest_conf = NULL;
     int longest_len = 0;
@@ -1009,8 +1008,9 @@ static int ParseArgumentIndependent_(struct UnifiedData_ *data, struct UnifiedGr
     return 0;
 }
 
+#include <stdio.h>
 /*
-    return negative: error and errno is set
+    return negative: error and status is set
  */
 static int ParseArgumentComposable_(struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *arg)
 {

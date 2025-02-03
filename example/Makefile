@@ -1,6 +1,6 @@
 CC = clang
 
-CFLAG += -std=c99 -Og -g
+CFLAG += -std=c99 -O0 -g
 CFLAG += -Wall -Wvla
 CFLAG += -I../include/
 
