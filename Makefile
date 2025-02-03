@@ -1,7 +1,6 @@
 CC := clang
 
 CFLAGS += --std=c99
-CFLAGS += -O3
 CFLAGS += -Wall -Wvla
 CFLAGS += -Iinclude/
 
@@ -13,6 +12,12 @@ source_dir := source
 include config.mk
 
 sources := ${source_dir}/argpx.c
+
+ifeq (${debug}, true)
+CFLAGS += -Og -g
+else
+CFLAGS += -O3
+endif
 
 ifeq (${enable_hash}, true)
 sources += ${source_dir}/argpx_hash.c

@@ -12,6 +12,11 @@ for arg in "$@"; do
         echo "NULL == NULL == 0x0 != awa != QwQ != qvq"
         exit 0
         ;;
+    --debug)
+        cat <<EOF >> "${config_file}"
+debug=true
+EOF
+        ;;
     --enable-hash)
         cat <<EOF >> "${config_file}"
 enable_hash=true
