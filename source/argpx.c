@@ -799,8 +799,8 @@ static bool ShouldFlagTypeHaveParam_(struct UnifiedData_ *data, const struct Arg
     It will find the conf with the highest match length in name_start.
     But if shortest == true, it will find the first matching one:
 
-    e.g. Find "TestTest" and "Test" in "TestTest"
-    false: -> "TestTest"
+    e.g. Find str "TestTail" or str "Test" in "TestTail"
+    false: -> "TestTail"
     true:  -> "Test"
 
     And flag may have assignment symbol, I think the caller should already known the names range.
@@ -860,9 +860,9 @@ static struct ArgpxFlag *MatchConfLinear_(
     return longest_conf;
 }
 
-/*
-    TODO to respect ARGPX_USE_HASH
+#ifdef ARGPX_USE_HASH
 
+/*
     return NULL: error and set status
  */
 static struct ArgpxFlag *MatchConfHash_(
@@ -899,27 +899,31 @@ static struct ArgpxFlag *MatchConfHash_(
     }
 }
 
-/*
-    A collection of MatchConf*() functions.
+#endif
 
-    TODO don't be ugly
+/*
+    A wrapper of MatchConf*() functions.
+
+    If name_len is 0, then the shortest matching name is implied(the "shortest" of MatchConfLinear_() function).
+    Because hash mode can only be used when the length fixed, so even the HASH mode enabled, when length is unknown(like
+    ARGPX_ATTR_COMPOSABLE mode), linear algorithm still be use.
  */
 static struct ArgpxFlag *MatchConf_(
-    struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *name_start, size_t max_name_len, bool shortest)
+    struct UnifiedData_ *data, struct UnifiedGroupCache_ *grp, char *name_start, size_t name_len)
 {
     assert(data != NULL);
     assert(grp != NULL);
     assert(name_start != NULL);
 
 #ifndef ARGPX_USE_HASH
-    return MatchConfLinear_(data, grp, name_start, max_name_len, shortest);
-#endif
-
-    if (max_name_len == 0) {
-        return MatchConfLinear_(data, grp, name_start, 0, shortest);
+    return MatchConfLinear_(data, grp, name_start, name_len, name_len == 0 ? true : false);
+#else
+    if (name_len == 0) {
+        return MatchConfLinear_(data, grp, name_start, 0, true);
     } else {
-        return MatchConfHash_(data, grp, name_start, max_name_len);
+        return MatchConfHash_(data, grp, name_start, name_len);
     }
+#endif
 }
 
 /*
@@ -966,7 +970,7 @@ static int ParseArgumentIndependent_(struct UnifiedData_ *data, struct UnifiedGr
     else
         name_len = strlen(name_start);
 
-    struct ArgpxFlag *conf = MatchConf_(data, grp, name_start, name_len, false);
+    struct ArgpxFlag *conf = MatchConf_(data, grp, name_start, name_len);
     // some check
     if (conf == NULL)
         return -1;
@@ -1033,7 +1037,7 @@ static int ParseArgumentComposable_(struct UnifiedData_ *data, struct UnifiedGro
     size_t remaining_len = strlen(arg) - grp->prefix_len;
 
     while (remaining_len > 0) {
-        struct ArgpxFlag *conf = MatchConf_(data, grp, base_ptr, 0, true);
+        struct ArgpxFlag *conf = MatchConf_(data, grp, base_ptr, 0);
         if (conf == NULL)
             return -1;
         size_t name_len = strlen(conf->name);
