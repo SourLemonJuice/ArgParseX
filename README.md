@@ -12,6 +12,21 @@ However, the config data structures can't be modified at the same times.
 
 Note the documents are always up-to-date, so make sure to check the corresponding git tag.
 
+## Build
+
+Requirement: clang
+
+In the repository root, and run:
+
+- create configuration file: `./configure.sh`
+- create build output directory: `mkdir build`
+- build archive file(.a) and shared library(.so): `make`
+- the library file located in: `build/libargparsex.a` and `build/libargparsex.so`
+
+For debugging, add the `--debug` flag to `./configure.sh`.
+
+NOTE: this is not GNU Automake, there're just some scripts and Makefile written by me.
+
 ## Usage
 
 The goal of ArgParseX is not to be simple use, which also make the interface look less nice. Some actual usage at here: [example/test.c](example/test.c)
@@ -73,13 +88,13 @@ And `-Wvla`(no Variable-length array).
 Code style follows [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html), and clang-format config.\
 The "namespace" of identifiers is `argpx_xxx`.The base pointer of the array is named `xxx_v`, its counter named `xxx_c`.
 
-For non-user input(like string length), it use `assert()` std macro to check function parameters' validity.
+For non-user input(like null pointer), it use `assert()` std macro to check function parameters' validity.
 
 Storage string length as `size_t`.
 
 ## Hash table mode
 
-When building `source/argpx.c`, add define `ARGPX_USE_HASH` and link the `source/argpx_hash.c` unit to enable hash table mode for flag search.\
+To enable hash table mode, add the `--enable-hash` flag to `./configure.sh` script. Library built this way will use hash tables as much as they can.\
 It **would not** make simple task faster, even slower.\
 The critical value will be determined in the future.
 
