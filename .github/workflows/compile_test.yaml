@@ -9,14 +9,17 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: example/
     steps:
       - uses: actions/checkout@v4
+      - name: configure
+        run: ./configure.sh --enable-batch-alloc --debug
       - name: build
+        run: mkdir build/ && make
+      - name: build test
+        working-directory: example/
         run: make
       - name: end-to-end test
+        working-directory: example/
         run: ./test_e2e.sh
       - uses: actions/upload-artifact@v4
         with:
