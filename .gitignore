@@ -54,3 +54,7 @@ dkms.conf
 # clang
 compile_commands.json
 .cache/
+
+# building
+/build/
+/config.mk

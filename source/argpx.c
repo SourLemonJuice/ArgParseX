@@ -1,3 +1,8 @@
+/*
+    Compiler macros(passing them with -D<macro> flag):
+    #define ARGPX_ENABLE_HASH           // when searching flags, use hash as much as possible
+    #define ARGPX_ENABLE_BATCH_ALLOC    // reduce system calls during configuration
+ */
 #include "argpx/argpx.h"
 
 #include <assert.h>
@@ -8,12 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef ARGPX_ENABLE_HASH
 #include "argpx_hash.h"
-
 // TODO implement not currect
 #define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
-// #define ARGPX_USE_HASH // TODO change name
-// #define ARGPX_USE_BATCH_ALLOC
+#endif
 
 struct FlagTableUnit_ {
     // only check if the root key is used
@@ -106,7 +110,7 @@ static void *ArrGrowOneSlot_(void *base, size_t unit_size, unsigned int current_
     assert(unit_size > 0);
     assert(batch > 0);
 
-#ifdef ARGPX_USE_BATCH_ALLOC
+#ifdef ARGPX_ENABLE_BATCH_ALLOC
     if (base == NULL) {
         base = malloc(unit_size * batch);
     } else if (current_c % batch == 0) {
@@ -249,7 +253,7 @@ void ArgpxResultFree(struct ArgpxResult *res)
     free(res->param_v);
 }
 
-#ifdef ARGPX_USE_HASH
+#ifdef ARGPX_ENABLE_HASH
 
 /*
     Return the pointer of table self.
@@ -860,7 +864,7 @@ static struct ArgpxFlag *MatchConfLinear_(
     return longest_conf;
 }
 
-#ifdef ARGPX_USE_HASH
+#ifdef ARGPX_ENABLE_HASH
 
 /*
     return NULL: error and set status
@@ -915,7 +919,7 @@ static struct ArgpxFlag *MatchConf_(
     assert(grp != NULL);
     assert(name_start != NULL);
 
-#ifndef ARGPX_USE_HASH
+#ifndef ARGPX_ENABLE_HASH
     return MatchConfLinear_(data, grp, name_start, name_len, name_len == 0 ? true : false);
 #else
     if (name_len == 0) {
@@ -1182,7 +1186,7 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
     else
         data.terminate = *in_terminate;
 
-#ifdef ARGPX_USE_HASH
+#ifdef ARGPX_ENABLE_HASH
     if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
         data.res->status = kArgpxStatusMemoryError;
         return data.res->status;
@@ -1244,7 +1248,7 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
     }
 
 out:
-#ifdef ARGPX_USE_HASH
+#ifdef ARGPX_ENABLE_HASH
     FlagTableFree_(&data.conf_table);
 #endif
     return data.res->status;
