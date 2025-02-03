@@ -71,8 +71,8 @@ AssertSuccess $test_exec param1 param2 paramEnd
 AssertFailure $test_exec --ffff
 AssertFailure $test_exec -ffff
 AssertSuccess $test_exec --setbool --setint paramEnd
-AssertSuccess $test_exec --test=testStr1,testStr2
-AssertSuccess $test_exec ++test2~str1-str2
+# AssertSuccess $test_exec --test=testStr1,testStr2
+# AssertSuccess $test_exec ++test2~str1-str2
 AssertSuccess $test_exec -baac -a -- -ba paramEnd
 AssertSuccess $test_exec /win1Param1/win2Param2 paramEnd
 

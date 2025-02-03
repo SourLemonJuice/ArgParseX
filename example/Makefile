@@ -4,13 +4,18 @@ CFLAG += -std=c99 -Og -g
 CFLAG += -Wall -Wvla
 CFLAG += -I../include/
 
+root := ..
+
 all: test.out
 
-test.out: test.c ../source/argpx.c ../source/argpx_hash.c
+test.out: test.c ${root}/build/libargparsex.a
 	${CC} ${CFLAG} \
 		-o test.out \
-		test.c ../source/argpx.c ../source/argpx_hash.c
+		$^
+
+${root}/build/libargparsex.a: ${root}/source/*.c
+	cd ${root} && make
 
 .PHONY: clean
 clean:
-	rm -- *.out
+	rm *.out

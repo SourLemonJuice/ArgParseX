@@ -15,21 +15,19 @@
 
 #ifdef ARGPX_ENABLE_HASH
 #include "argpx_hash.h"
-// TODO implement not currect
 #define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
 #endif
 
 struct FlagTableUnit_ {
     // only check if the root key is used
-    bool used;
-    struct ArgpxFlag conf;
+    bool root_used;
+    struct ArgpxFlag *conf;
     // if not NULL, then it is a linked list
     struct FlagTableUnit_ *next;
 };
 
 struct FlagTable_ {
-    int row_c;
-    int col_c; // calculated by TABLE_LOADFACTOR dynamics
+    int count; // calculated by TABLE_LOADFACTOR dynamics
     struct FlagTableUnit_ *array;
 };
 
@@ -256,41 +254,25 @@ void ArgpxResultFree(struct ArgpxResult *res)
 #ifdef ARGPX_ENABLE_HASH
 
 /*
-    Return the pointer of table self.
-    return NULL: error
- */
-static struct FlagTable_ *FlagTableAlloc_(struct FlagTable_ *table, int group_count, int flag_count)
-{
-    assert(table != NULL);
-    assert(group_count > 0);
-    assert(flag_count > 0);
+    Call this function if root_used is true. Otherwise use root entry directly.
 
-    table->row_c = group_count;
-    table->col_c = flag_count / ARGPX_FLAG_TABLE_LOADFACTOR;
-    table->array = malloc(sizeof(struct FlagTableUnit_) * table->row_c * table->col_c);
-    if (table->array == NULL)
-        return NULL;
-
-    return table;
-}
-
-/*
     return NULL: error
  */
 static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ *unit)
 {
     assert(unit != NULL);
 
-    while (unit->used == true) {
-        if (unit->next == NULL) {
-            unit->next = malloc(sizeof(struct FlagTableUnit_));
-            if (unit->next == NULL)
-                return NULL;
+    while (true) {
+        if (unit->next != NULL) {
+            unit = unit->next;
+            continue;
         }
-        unit = unit->next;
-    }
+        unit->next = malloc(sizeof(struct FlagTableUnit_));
+        if (unit->next == NULL)
+            return NULL;
 
-    return unit;
+        return unit->next;
+    }
 }
 
 /*
@@ -306,13 +288,14 @@ static struct FlagTable_ *FlagTableMake_(
     assert(flagset != NULL);
     assert(table != NULL);
 
-    table = FlagTableAlloc_(table, style->group_c, flagset->count);
+    table->count = flagset->count / ARGPX_FLAG_TABLE_LOADFACTOR;
+    table->array = malloc(sizeof(struct FlagTableUnit_) * table->count);
     if (table == NULL) {
         return NULL;
     }
 
-    for (int i = 0; i < table->row_c * table->col_c; i++) {
-        table->array[i] = (struct FlagTableUnit_){.used = false};
+    for (int i = 0; i < table->count; i++) {
+        table->array[i] = (struct FlagTableUnit_){.root_used = false};
     }
 
     // init finished
@@ -321,31 +304,32 @@ static struct FlagTable_ *FlagTableMake_(
         struct ArgpxFlag *conf = &flagset->ptr[i];
 
         uint32_t name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
-        struct FlagTableUnit_ *unit = table->array + conf->group_idx * table->col_c;
-        unit += name_hash % table->col_c;
+        // TODO bad dispersion
+        struct FlagTableUnit_ *unit = table->array + (name_hash + conf->group_idx) % table->count;
 
-        unit = FlagTableEnterUnit_(unit);
-        if (unit == NULL) {
-            free(table->array);
-            return NULL;
+        if (unit->root_used == true) {
+            unit = FlagTableEnterUnit_(unit);
+            if (unit == NULL) {
+                free(table->array);
+                return NULL;
+            }
         }
 
-        *unit = (struct FlagTableUnit_){.used = true, .conf = *conf, .next = NULL};
+        *unit = (struct FlagTableUnit_){.root_used = true, .conf = conf, .next = NULL};
     }
 
     return table;
 }
 
 /*
+    Call this function, if "unit->next" linked list is exist.
+
     Note: it won't free up the parameter "unit", that's managed by table.array.
     Note: this function won't check .used element of root unit.
  */
 static void FlagTableFreeRecursiveUnit_(struct FlagTableUnit_ *unit)
 {
     assert(unit != NULL);
-
-    if (unit->next == NULL)
-        return;
 
     unit = unit->next;
     do {
@@ -359,11 +343,10 @@ static void FlagTableFree_(struct FlagTable_ *table)
 {
     assert(table != NULL);
 
-    for (int i = 0; i < table->row_c * table->col_c; i++) {
+    for (int i = 0; i < table->count; i++) {
         struct FlagTableUnit_ *unit = &table->array[i];
-        if (unit->used == false)
-            continue;
-        FlagTableFreeRecursiveUnit_(unit);
+        if (unit->root_used == true and unit->next != NULL)
+            FlagTableFreeRecursiveUnit_(unit);
     }
     free(table->array);
 }
@@ -882,17 +865,16 @@ static struct ArgpxFlag *MatchConfHash_(
     }
 
     uint32_t name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
-    struct FlagTableUnit_ *unit = data->conf_table.array + grp->idx * data->conf_table.col_c;
-    unit += name_hash % data->conf_table.col_c;
+    struct FlagTableUnit_ *unit = data->conf_table.array + (name_hash + grp->idx) % data->conf_table.count;
 
-    if (unit->used == false) {
+    if (unit->root_used == false) {
         data->res->status = kArgpxStatusUnknownFlag;
         return NULL;
     }
 
     while (true) {
-        if (strncmp(unit->conf.name, name, name_len) == 0)
-            return &unit->conf;
+        if (unit->conf->group_idx == grp->idx and strncmp(unit->conf->name, name, name_len) == 0)
+            return unit->conf;
 
         if (unit->next == NULL) {
             data->res->status = kArgpxStatusUnknownFlag;
