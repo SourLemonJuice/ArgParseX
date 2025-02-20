@@ -5,8 +5,6 @@ cmd_arg=(
     "--setbool"
     "--setint"
     "param2"
-    "--test=testStr1,testStr2"
-    "++test2~str1-str2"
     "-baac"
     "-a"
     "/win1Param1/win2Param2"
