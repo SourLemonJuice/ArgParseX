@@ -1143,7 +1143,6 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
     struct ArgpxFlagSet *in_flag, struct ArgpxTerminateMethod *in_terminate)
 {
     assert(in_result != NULL);
-    assert(in_arg_c > 0);
     assert(in_arg_v != NULL);
     assert(in_style != NULL);
     assert(in_flag != NULL);
@@ -1159,9 +1158,18 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
 
     *data.res = (struct ArgpxResult){
         .status = kArgpxStatusSuccess,
+        .current_argv_idx = 0,
+        .current_argv_ptr = NULL,
         .param_c = 0,
         .param_v = NULL,
     };
+
+    if (data.arg_c < 0) {
+        data.res->status = kArgpxStatusFailure; // TODO change name
+        return data.res->status;
+    } else if (data.arg_c == 0) {
+        return data.res->status;
+    }
 
     if (in_terminate == NULL)
         data.terminate = (struct ArgpxTerminateMethod){.method = kArgpxTerminateNone};
