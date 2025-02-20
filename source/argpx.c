@@ -14,8 +14,8 @@
 #include <string.h>
 
 #ifdef ARGPX_ENABLE_HASH
-#include "argpx_hash.h"
-#define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
+    #include "argpx_hash.h"
+    #define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
 #endif
 
 struct FlagTableUnit_ {
@@ -304,8 +304,8 @@ static struct FlagTable_ *FlagTableMake_(
         struct ArgpxFlag *conf = &flagset->ptr[i];
 
         uint32_t name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
-        // TODO bad dispersion
-        struct FlagTableUnit_ *unit = table->array + (name_hash + conf->group_idx) % table->count;
+        name_hash = ArgpxHashOffsetIntFnv1aB32(conf->group_idx, name_hash);
+        struct FlagTableUnit_ *unit = table->array + name_hash % table->count;
 
         if (unit->root_used == true) {
             unit = FlagTableEnterUnit_(unit);
@@ -864,7 +864,8 @@ static struct ArgpxFlag *MatchConfHash_(
     }
 
     uint32_t name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
-    struct FlagTableUnit_ *unit = data->conf_table.array + (name_hash + grp->idx) % data->conf_table.count;
+    name_hash = ArgpxHashOffsetIntFnv1aB32(grp->idx, name_hash);
+    struct FlagTableUnit_ *unit = data->conf_table.array + name_hash % data->conf_table.count;
 
     if (unit->root_used == false) {
         data->res->status = kArgpxStatusUnknownFlag;
