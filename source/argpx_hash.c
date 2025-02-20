@@ -15,11 +15,3 @@ uint32_t ArgpxHashFnv1aB32(void *buf_in, size_t buf_size, uint32_t hash)
 
     return hash;
 }
-
-uint32_t ArgpxHashOffsetIntFnv1aB32(int offset, uint32_t hash)
-{
-    hash ^= (uint32_t)offset;
-    hash *= ARGPX_HASH_FNV1A_32_PRIME;
-
-    return hash;
-}

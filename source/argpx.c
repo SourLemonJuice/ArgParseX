@@ -303,8 +303,9 @@ static struct FlagTable_ *FlagTableMake_(
     for (int i = 0; i < flagset->count; i++) {
         struct ArgpxFlag *conf = &flagset->ptr[i];
 
-        uint32_t name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
-        name_hash = ArgpxHashOffsetIntFnv1aB32(conf->group_idx, name_hash);
+        uint32_t name_hash;
+        name_hash = ArgpxHashFnv1aB32(conf->name, strlen(conf->name), ARGPX_HASH_FNV1A_32_INIT);
+        name_hash = ArgpxHashFnv1aB32(&conf->group_idx, sizeof(conf->group_idx), name_hash);
         struct FlagTableUnit_ *unit = table->array + name_hash % table->count;
 
         if (unit->root_used == true) {
@@ -863,8 +864,9 @@ static struct ArgpxFlag *MatchConfHash_(
         return NULL;
     }
 
-    uint32_t name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
-    name_hash = ArgpxHashOffsetIntFnv1aB32(grp->idx, name_hash);
+    uint32_t name_hash;
+    name_hash = ArgpxHashFnv1aB32(name, name_len, ARGPX_HASH_FNV1A_32_INIT);
+    name_hash = ArgpxHashFnv1aB32(&grp->idx, sizeof(grp->idx), name_hash);
     struct FlagTableUnit_ *unit = data->conf_table.array + name_hash % data->conf_table.count;
 
     if (unit->root_used == false) {
