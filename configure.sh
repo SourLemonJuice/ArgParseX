@@ -18,14 +18,10 @@ debug=true
 EOF
         ;;
     --enable-hash)
-        cat <<EOF >> "${config_file}"
-enable_hash=true
-EOF
+        echo "[Warning] Flag '--enable-hash' is deprecated. Set .use_hash element of struct ArgpxParseOption in runtime to instead it."
         ;;
     --enable-batch-alloc)
-        cat <<EOF >> "${config_file}"
-enable_batch_alloc=true
-EOF
+        echo "[Warning] Flag '--enable-batch-alloc' is deprecated. Batch alloc is now always on."
         ;;
     haoye | 好耶)
         echo "好耶"

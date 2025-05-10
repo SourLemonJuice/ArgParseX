@@ -1,9 +1,9 @@
 /*
     Compiler macros(passing them with -D<macro> flag):
-    #define ARGPX_ENABLE_BATCH_ALLOC    // reduce system calls during configuration
 
-    Deprecated:
+    Deprecated macros:
     #define ARGPX_ENABLE_HASH           // when searching flags, use hash as much as possible
+    #define ARGPX_ENABLE_BATCH_ALLOC    // reduce system calls during configuration
  */
 #include "argpx/argpx.h"
 
@@ -103,16 +103,12 @@ static void *ArrGrowOneSlot_(void *base, size_t unit_size, unsigned int current_
     assert(unit_size > 0);
     assert(batch > 0);
 
-#ifdef ARGPX_ENABLE_BATCH_ALLOC
     if (base == NULL) {
         base = malloc(unit_size * batch);
     } else if (current_c % batch == 0) {
         // is full
         base = realloc(base, unit_size * (current_c + batch));
     }
-#else
-    base = realloc(base, unit_size * (current_c + 1));
-#endif
 
     if (base == NULL)
         return NULL;
