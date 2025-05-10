@@ -159,9 +159,6 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
     If batch alloc enabled, expand 3 slots at once.
 
     return negative: error
-    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
-        if ( >= data->terminate.load.cmdparam_limit.limit)
-            return -2;
     }
  */
 int ArgpxGroupAppend(struct ArgpxStyle *style, const struct ArgpxGroup *new)
@@ -272,10 +269,6 @@ static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ *unit)
     Initialize the incoming table. That should be on the stack.
 
     return the "table" parameter self.
-    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
-        if ( >= data->terminate.load.cmdparam_limit.limit)
-            return -2;
-    }
     return NULL: error
  */
 static struct FlagTable_ *FlagTableMake_(
@@ -352,10 +345,6 @@ static void FlagTableFree_(struct FlagTable_ *table)
 /*
     Using the offset shift arguments, it will be safe.
     Return a pointer to the new argument.
-    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
-        if ( >= data->terminate.load.cmdparam_limit.limit)
-            return -2;
-    }
 
     return NULL: error
  */

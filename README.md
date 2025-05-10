@@ -1,7 +1,7 @@
 # ArgParseX
 
 Comprehensive and configurable command line arguments parser library.\
-Written for C language.
+Written for C language. We care about CPU time.
 
 ## Documents
 
@@ -72,8 +72,22 @@ It means, if `--setbool` detected, `test_bool` will be set to `true`.
 After the configuration, call the main parser:
 
 ```c
+struct ArgpxParseOption opt = ARGPX_PARSE_OPTION_INIT;
+struct ArgpxResult res;
 // skip the first arg, that's the exec command name
-struct ArgpxResult *res = ArgpxParse(argc - 1, argv + 1, &style, &flag, NULL);
+if (ArgpxParse(&res, argc - 1, argv + 1, &style, &flag, &opt) != kArgpxStatusSuccess) {
+    printf("Error: %s\n", ArgpxStatusString(res.status))
+}
+```
+
+The full example can be found here: [example/test.c](./example/test.c)
+
+### Limit maximum command parameter
+
+```c
+struct ArgpxParseOption opt = ARGPX_PARSE_OPTION_INIT;
+opt.max_cmdparam = 3;
+// ...
 ```
 
 ## C standard
@@ -94,11 +108,13 @@ Storage string length as `size_t`.
 
 ## Hash table mode
 
-To enable hash table mode, add the `--enable-hash` flag to `./configure.sh` script. Library built this way will use hash tables as much as they can.\
-It **would not** make simple task faster, even slower.\
-The critical value will be determined in the future.
+Hash table mode can be set at runtime after v3.0.\
+In the `struct ArgpxParseOption` of the `ArgpxParse()`'s parameter, set the `.use_hash` element to `true` to enable this feature.
 
-The hash function used now is FNV-1a 32bit.
+In the case of a simple task, it won't make parse faster. But our implementation are already would not spend too much CPU time now.\
+So if you want to use it, feel free to do so.
+
+The hash function used now is FNV-1a 32bit. It's simple, we can easily implement it from scratch(for learning purposes).
 
 ## Benchmark
 
@@ -129,10 +145,6 @@ Source code located in: [benchmark/](./benchmark/)
 |GNU getopt|0m1.456s|
 |ArgParseX(-O3)|0m2.580s|
 |ArgParseX(-O0)|0m4.619s|
-
-## Todo
-
-- 重复匹配一个标志的后果？
 
 ## See also
 
