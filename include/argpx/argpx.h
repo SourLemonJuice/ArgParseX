@@ -176,21 +176,16 @@ struct ArgpxFlagSet {
         .count = 0, .ptr = NULL \
     }
 
-enum ArgpxHidden_TerminateMethod {
-    kArgpxTerminateNone,
-    kArgpxTerminateCmdparamLimit,
+struct ArgpxParseOption {
+    int max_cmdparam;
+    bool use_hash;
 };
 
-struct ArgpxHidden_TerminateCmdparamLimit {
-    int limit;
-};
-
-struct ArgpxTerminateMethod {
-    enum ArgpxHidden_TerminateMethod method;
-    union {
-        struct ArgpxHidden_TerminateCmdparamLimit cmdparam_limit;
-    } load;
-};
+#define ARGPX_PARSE_OPTION_INIT \
+    (struct ArgpxParseOption) \
+    { \
+        .max_cmdparam = 0, .use_hash = false \
+    }
 
 struct ArgpxResult {
     enum ArgpxStatus status;
@@ -218,19 +213,9 @@ void ArgpxOutParamSingleFree(struct ArgpxOutParamSingle *out);
 void ArgpxOutParamListFree(struct ArgpxOutParamList *out);
 
 int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, struct ArgpxStyle *in_style,
-    struct ArgpxFlagSet *in_flag, struct ArgpxTerminateMethod *in_terminate);
-
-/*
-    Shortcuts
- */
+    struct ArgpxFlagSet *in_flag, struct ArgpxParseOption *in_option);
 
 // clang-format off
-
-enum ArgpxHidden_BuiltinGroup {
-    kArgpxHidden_BuiltinGroupGnu,
-    kArgpxHidden_BuiltinGroupUnix,
-    kArgpxHidden_BuiltinGroupCount,
-};
 
 #define ARGPX_GROUP_GNU &(struct ArgpxGroup){ \
         .prefix = "--", \

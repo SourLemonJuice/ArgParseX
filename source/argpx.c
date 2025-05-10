@@ -1,7 +1,9 @@
 /*
     Compiler macros(passing them with -D<macro> flag):
-    #define ARGPX_ENABLE_HASH           // when searching flags, use hash as much as possible
     #define ARGPX_ENABLE_BATCH_ALLOC    // reduce system calls during configuration
+
+    Deprecated:
+    #define ARGPX_ENABLE_HASH           // when searching flags, use hash as much as possible
  */
 #include "argpx/argpx.h"
 
@@ -13,10 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ARGPX_ENABLE_HASH
-    #include "argpx_hash.h"
-    #define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
-#endif
+#include "argpx_hash.h"
+
+#define ARGPX_FLAG_TABLE_LOADFACTOR 0.75
 
 struct FlagTableUnit_ {
     // only check if the root key is used
@@ -35,22 +36,16 @@ struct FlagTable_ {
     An unified data of this library.
  */
 struct UnifiedData_ {
-    // the result structure of the main function
-    // this structure must not be on the stack
+    // the result structure must not be on the stack
     struct ArgpxResult *res;
-    // arguments count
     int arg_c;
-    // pointer to arguments array
     char **arg_v;
-    // the arg index being processed, it records the first unprocessed arg.
-    // no no no, try to make it to record the last processed arg
+    // try to make it to record the last processed arg
     int arg_idx;
     struct ArgpxStyle style;
-    // config set
     struct ArgpxFlagSet conf;
-    // config table
     struct FlagTable_ conf_table;
-    struct ArgpxTerminateMethod terminate;
+    struct ArgpxParseOption opt;
 };
 
 struct UnifiedGroupCache_ {
@@ -168,6 +163,10 @@ char *ArgpxStatusString(const enum ArgpxStatus status)
     If batch alloc enabled, expand 3 slots at once.
 
     return negative: error
+    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
+        if ( >= data->terminate.load.cmdparam_limit.limit)
+            return -2;
+    }
  */
 int ArgpxGroupAppend(struct ArgpxStyle *style, const struct ArgpxGroup *new)
 {
@@ -251,8 +250,6 @@ void ArgpxResultFree(struct ArgpxResult *res)
     free(res->param_v);
 }
 
-#ifdef ARGPX_ENABLE_HASH
-
 /*
     Call this function if root_used is true. Otherwise use root entry directly.
 
@@ -279,6 +276,10 @@ static struct FlagTableUnit_ *FlagTableEnterUnit_(struct FlagTableUnit_ *unit)
     Initialize the incoming table. That should be on the stack.
 
     return the "table" parameter self.
+    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
+        if ( >= data->terminate.load.cmdparam_limit.limit)
+            return -2;
+    }
     return NULL: error
  */
 static struct FlagTable_ *FlagTableMake_(
@@ -352,11 +353,13 @@ static void FlagTableFree_(struct FlagTable_ *table)
     free(table->array);
 }
 
-#endif
-
 /*
     Using the offset shift arguments, it will be safe.
     Return a pointer to the new argument.
+    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
+        if ( >= data->terminate.load.cmdparam_limit.limit)
+            return -2;
+    }
 
     return NULL: error
  */
@@ -401,9 +404,8 @@ static int AppendCommandParameter_(struct UnifiedData_ *data, char *str)
 
     res->param_v[res->param_c - 1] = str;
 
-    if (data->terminate.method == kArgpxTerminateCmdparamLimit) {
-        if (res->param_c >= data->terminate.load.cmdparam_limit.limit)
-            return -2;
+    if (data->opt.max_cmdparam != 0 and res->param_c >= data->opt.max_cmdparam) {
+        return -2;
     }
 
     return 0;
@@ -847,8 +849,6 @@ static struct ArgpxFlag *MatchConfLinear_(
     return longest_conf;
 }
 
-#ifdef ARGPX_ENABLE_HASH
-
 /*
     return NULL: error and set status
  */
@@ -887,8 +887,6 @@ static struct ArgpxFlag *MatchConfHash_(
     }
 }
 
-#endif
-
 /*
     A wrapper of MatchConf*() functions.
 
@@ -903,15 +901,15 @@ static struct ArgpxFlag *MatchConf_(
     assert(grp != NULL);
     assert(name_start != NULL);
 
-#ifndef ARGPX_ENABLE_HASH
-    return MatchConfLinear_(data, grp, name_start, name_len, name_len == 0 ? true : false);
-#else
+    if (data->opt.use_hash == false) {
+        return MatchConfLinear_(data, grp, name_start, name_len, name_len == 0 ? true : false);
+    }
+
     if (name_len == 0) {
         return MatchConfLinear_(data, grp, name_start, 0, true);
     } else {
         return MatchConfHash_(data, grp, name_start, name_len);
     }
-#endif
 }
 
 /*
@@ -967,11 +965,11 @@ static int ParseArgumentIndependent_(struct UnifiedData_ *data, struct UnifiedGr
         return -1;
     }
     if (ShouldFlagTypeHaveParam_(data, conf) == true) {
-        if (assigner_ptr != NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
+        if (assigner_ptr != NULL and(grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
             data->res->status = kArgpxStatusAssignmentDisallowAssigner;
             return -1;
         }
-        if (assigner_ptr == NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0) {
+        if (assigner_ptr == NULL and(grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0) {
             data->res->status = kArgpxStatusAssignmentDisallowArg;
             return -1;
         }
@@ -1053,7 +1051,7 @@ static int ParseArgumentComposable_(struct UnifiedData_ *data, struct UnifiedGro
             data->res->status = kArgpxStatusParamNoNeeded;
             return -1;
         }
-        if (assigner_exist == true and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
+        if (assigner_exist == true and(grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ASSIGNER) != 0) {
             data->res->status = kArgpxStatusAssignmentDisallowAssigner;
             return -1;
         }
@@ -1079,12 +1077,12 @@ static int ParseArgumentComposable_(struct UnifiedData_ *data, struct UnifiedGro
         }
 
         // and do some check
-        if (param_start == NULL and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0) {
+        if (param_start == NULL and(grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_ARG) != 0) {
             data->res->status = kArgpxStatusAssignmentDisallowArg;
             return -1;
         }
-        if (param_start != NULL and assigner_exist == false
-            and (grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
+        if (param_start != NULL and assigner_exist
+            == false and(grp->item.attribute & ARGPX_ATTR_ASSIGNMENT_DISABLE_TRAILING) != 0)
         {
             data->res->status = kArgpxStatusAssignmentDisallowTrailing;
             return -1;
@@ -1143,12 +1141,14 @@ static int ParseArgumentComposable_(struct UnifiedData_ *data, struct UnifiedGro
     Only 0(kArgpxStatusSuccess) is success.
  */
 int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, struct ArgpxStyle *in_style,
-    struct ArgpxFlagSet *in_flag, struct ArgpxTerminateMethod *in_terminate)
+    struct ArgpxFlagSet *in_flag, struct ArgpxParseOption *in_option)
 {
     assert(in_result != NULL);
+    assert(in_arg_c >= 0);
     assert(in_arg_v != NULL);
     assert(in_style != NULL);
     assert(in_flag != NULL);
+    assert(in_option != NULL);
 
     struct UnifiedData_ data = {
         .res = in_result,
@@ -1157,6 +1157,7 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
         .arg_idx = 0,
         .style = *in_style,
         .conf = *in_flag,
+        .opt = *in_option,
     };
 
     *data.res = (struct ArgpxResult){
@@ -1167,24 +1168,16 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
         .param_v = NULL,
     };
 
-    if (data.arg_c < 0) {
-        data.res->status = kArgpxStatusFailure; // TODO change name
-        return data.res->status;
-    } else if (data.arg_c == 0) {
+    if (data.arg_c == 0) {
         return data.res->status;
     }
 
-    if (in_terminate == NULL)
-        data.terminate = (struct ArgpxTerminateMethod){.method = kArgpxTerminateNone};
-    else
-        data.terminate = *in_terminate;
-
-#ifdef ARGPX_ENABLE_HASH
-    if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
-        data.res->status = kArgpxStatusMemoryError;
-        return data.res->status;
+    if (data.opt.use_hash == true) {
+        if (FlagTableMake_(&data.style, &data.conf, &data.conf_table) == NULL) {
+            data.res->status = kArgpxStatusMemoryError;
+            return data.res->status;
+        }
     }
-#endif
 
     bool stop_parsing = false;
     for (; data.arg_idx < data.arg_c; data.arg_idx++) {
@@ -1241,8 +1234,8 @@ int ArgpxParse(struct ArgpxResult *in_result, int in_arg_c, char **in_arg_v, str
     }
 
 out:
-#ifdef ARGPX_ENABLE_HASH
-    FlagTableFree_(&data.conf_table);
-#endif
+    if (data.opt.use_hash == true) {
+        FlagTableFree_(&data.conf_table);
+    }
     return data.res->status;
 }

@@ -179,9 +179,12 @@ int main(int argc, char *argv[])
         .callback = CbSameName1_,
     });
 
+    struct ArgpxParseOption opt = ARGPX_PARSE_OPTION_INIT;
+    opt.use_hash = true;
+
     struct ArgpxResult res;
     // skip the first arg, that's the exec command name
-    if (ArgpxParse(&res, argc - 1, argv + 1, &style, &flag, NULL) != kArgpxStatusSuccess) {
+    if (ArgpxParse(&res, argc - 1, argv + 1, &style, &flag, &opt) != kArgpxStatusSuccess) {
         Error_(&res);
     }
 
