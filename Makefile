@@ -11,7 +11,7 @@ source_dir := source
 
 include config.mk
 
-sources := ${source_dir}/argpx.c
+sources := ${source_dir}/argpx.c ${source_dir}/argpx_hash.c
 
 ifeq (${debug}, true)
 # -Og is still missing something

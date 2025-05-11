@@ -1,15 +1,15 @@
-CC = clang
+CC := clang
 
-CFLAG += -std=c99 -O0 -g
-CFLAG += -Wall -Wvla
-CFLAG += -I../include/
+CFLAGS += -std=c99 -O0 -g
+CFLAGS += -Wall -Wvla
+CFLAGS += -I../include/
 
 root := ..
 
 all: test.out
 
 test.out: test.c ${root}/build/libargparsex.a
-	${CC} ${CFLAG} \
+	${CC} ${CFLAGS} \
 		-o test.out \
 		$^
 
@@ -18,4 +18,4 @@ ${root}/build/libargparsex.a: ${root}/source/*.c
 
 .PHONY: clean
 clean:
-	rm *.out
+	-rm *.out *.o
