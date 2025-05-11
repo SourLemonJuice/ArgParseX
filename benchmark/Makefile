@@ -1,23 +1,26 @@
-CC:=/usr/bin/clang
-CFLAGS+=-Wall -std=c99 -I../include/
-CFLAGS+=-O3 -g
-# CFLAGS+=-Og
+CC := clang
 
-argpx_src:=../source
+CFLAGS += -std=c99 -O3 -g
+CFLAGS += -Wall -Wvla
+CFLAGS += -I../include/
 
-all: bm_argpx.out bm_getopt.out
+root := ..
 
-bm_argpx.out: argpx*.o bm_argpx.c
-	${CC} argpx*.o bm_argpx.c \
-		--output ./bm_argpx.out \
-		${CFLAGS}
-
-argpx.o: ${argpx_src}/*.c
-	${CC} ${argpx_src}/*.c \
-		-c \
-		${CFLAGS}
+all: bm_getopt.out bm_argpx.out
 
 bm_getopt.out: bm_getopt.c
-	${CC} bm_getopt.c \
-		--output ./bm_getopt.out \
-		${CFLAGS}
+	${CC} ${CFLAGS} \
+		-o bm_getopt.out \
+		$^
+
+bm_argpx.out: bm_argpx.c ${root}/build/libargparsex.a
+	${CC} ${CFLAGS} \
+		-o bm_argpx.out \
+		$^
+
+${root}/build/libargparsex.a: ${root}/source/*.c
+	cd ${root} && make
+
+.PHONY: clean
+clean:
+	-rm *.out *.o
