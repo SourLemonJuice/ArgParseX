@@ -374,18 +374,12 @@ static int AppendCommandParameter_(struct UnifiedData_ *data, char *str)
     assert(str != NULL);
     struct ArgpxResult *res = data->res;
 
-    if (res->param_c == 0) {
-        res->param_c = 1;
-        res->param_v = malloc(sizeof(char *) * 3);
-    } else {
-        res->param_c += 1;
-        if (res->param_c % 4 == 0)
-            res->param_v = realloc(res->param_v, sizeof(char *) * (res->param_c + 3));
-    }
+    res->param_v = ArrGrowOneSlot_(res->param_v, sizeof(char *), res->param_c, 3);
     if (res->param_v == NULL) {
         res->status = kArgpxStatusMemoryError;
         return -1;
     }
+    res->param_c += 1;
 
     res->param_v[res->param_c - 1] = str;
 
