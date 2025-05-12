@@ -72,7 +72,6 @@ int main(void)
 
     for (int i = 0; i < 10 * 1000 * 1000; i++) {
         struct ArgpxParseOption opt = ARGPX_PARSE_OPTION_INIT;
-        opt.use_hash = true;
         struct ArgpxResult res;
         if (ArgpxParse(&res, bm_argc, bm_argv, &style, &flag, &opt) != kArgpxStatusSuccess) {
             printf("ArgParseX error: %s\n", ArgpxStatusString(res.status));
